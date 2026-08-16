@@ -167,6 +167,13 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# Node / Next.js build and dependency output
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+npm-debug.log*
+
 # mypy
 .mypy_cache/
 .dmypy.json
