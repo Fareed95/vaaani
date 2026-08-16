@@ -1,0 +1,131 @@
+import base64
+import binascii
+import uuid
+from dataclasses import dataclass
+from typing import Any
+
+from vaaani.api.schemas import Citation, QueryRequest, QueryResponse
+from vaaani.config import Settings
+from vaaani.embeddings.multilingual_encoder import MultilingualEncoder
+from vaaani.generation.answer_generator import AnswerGenerator
+from vaaani.graph.nodes import PipelineNodes
+from vaaani.graph.pipeline import build_pipeline
+from vaaani.graph.state import GraphState
+from vaaani.guardrails.groundedness_check import GroundednessChecker
+from vaaani.guardrails.topic_classifier import TopicClassifier
+from vaaani.retrieval.dense import DenseRetriever
+from vaaani.retrieval.reranker import CrossEncoderReranker
+from vaaani.retrieval.sparse_bm25 import SparseBM25Retriever
+from vaaani.stt.sarvam_stt import SarvamSTT
+from vaaani.tts.sarvam_tts import SarvamTTS
+from vaaani.vectorstore.qdrant_client import QdrantVectorStore
+
+
+@dataclass(slots=True)
+class ServiceContainer:
+    settings: Settings
+    encoder: MultilingualEncoder
+    store: QdrantVectorStore
+    nodes: PipelineNodes
+    graph: Any
+
+    @classmethod
+    def build(cls, settings: Settings) -> "ServiceContainer":
+        encoder = MultilingualEncoder(settings.embedding_model, settings.enable_ml_models)
+        store = QdrantVectorStore(
+            settings.qdrant_url, settings.qdrant_collection, settings.qdrant_api_key
+        )
+        nodes = PipelineNodes(
+            stt=SarvamSTT(
+                settings.sarvam_api_key, settings.sarvam_base_url, settings.sarvam_stt_model
+            ),
+            tts=SarvamTTS(
+                settings.sarvam_api_key,
+                settings.sarvam_base_url,
+                settings.sarvam_tts_model,
+                settings.sarvam_tts_speaker,
+            ),
+            topic=TopicClassifier(),
+            dense=DenseRetriever(store, encoder),
+            sparse=SparseBM25Retriever(),
+            reranker=CrossEncoderReranker(settings.reranker_model, settings.enable_ml_models),
+            generator=AnswerGenerator(
+                settings.llm_api_key, settings.llm_base_url, settings.llm_model
+            ),
+            groundedness=GroundednessChecker(settings.nli_model, settings.enable_ml_models),
+            store=store,
+            confidence_threshold=settings.confidence_threshold,
+        )
+        return cls(
+            settings=settings,
+            encoder=encoder,
+            store=store,
+            nodes=nodes,
+            graph=build_pipeline(nodes),
+        )
+
+    async def initialize(self) -> None:
+        await self.store.ensure_collection(self.encoder.dimension)
+
+    async def query(self, request: QueryRequest) -> QueryResponse:
+        audio: bytes | None = None
+        if request.audio_base64:
+            try:
+                audio = base64.b64decode(request.audio_base64, validate=True)
+            except (binascii.Error, ValueError) as exc:
+                raise ValueError("audio_base64 is not valid base64") from exc
+            if len(audio) > 20 * 1024 * 1024:
+                raise ValueError("audio exceeds the 20MB request limit")
+
+        initial: GraphState = {
+            "request_id": str(uuid.uuid4()),
+            "query": request.query or "",
+            "language": request.language,
+            "audio": audio,
+            "audio_mime_type": request.audio_mime_type,
+            "conversation": [turn.model_dump() for turn in request.conversation],
+            "transcript": "",
+            "rewritten_query": "",
+            "candidates": [],
+            "reranked": [],
+            "answer": "",
+            "audio_base64": None,
+            "audio_output_mime_type": None,
+            "confidence": 0,
+            "refused": False,
+            "refusal_reason": None,
+            "guardrails": [],
+            "timings": [],
+            "degraded_services": [],
+            "errors": [],
+        }
+        result: GraphState = await self.graph.ainvoke(initial)
+        citations = [
+            Citation(
+                rank=rank,
+                passage_id=hit.passage_id,
+                text=hit.text,
+                score=hit.score,
+                language=hit.language,
+                source_lang=hit.source_lang,
+                target_lang=hit.target_lang,
+                chunk_strategy=hit.strategy,
+            )
+            for rank, hit in enumerate(result["reranked"], start=1)
+        ]
+        total = round(sum(float(item["duration_ms"]) for item in result["timings"]), 3)
+        return QueryResponse(
+            request_id=result["request_id"],
+            transcript=result["transcript"],
+            answer=result["answer"],
+            audio_base64=result["audio_base64"],
+            audio_mime_type=result["audio_output_mime_type"],
+            citations=citations,
+            confidence=result["confidence"],
+            refused=result["refused"],
+            refusal_reason=result["refusal_reason"],
+            guardrails=result["guardrails"],
+            timings=result["timings"],
+            total_duration_ms=total,
+            degraded_services=result["degraded_services"],
+        )
