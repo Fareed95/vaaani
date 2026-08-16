@@ -1,0 +1,20 @@
+{
+  "fixed": {
+    "chunks": 50,
+    "precision_at_5_proxy": 0.4,
+    "latency_p50_ms": 1.698,
+    "latency_p100_ms": 4.859
+  },
+  "semantic": {
+    "chunks": 104,
+    "precision_at_5_proxy": 0.6,
+    "latency_p50_ms": 2.471,
+    "latency_p100_ms": 2.722
+  },
+  "metadata": {
+    "chunks": 50,
+    "precision_at_5_proxy": 0.4,
+    "latency_p50_ms": 1.925,
+    "latency_p100_ms": 2.202
+  }
+}
