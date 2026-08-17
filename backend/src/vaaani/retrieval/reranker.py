@@ -18,9 +18,8 @@ class CrossEncoderReranker:
             from sentence_transformers import CrossEncoder
 
             return CrossEncoder(self.model_name)
-        except Exception:
-            self.degraded = True
-            return None
+        except Exception as exc:
+            raise RuntimeError(f"reranker_model_unavailable:{self.model_name}") from exc
 
     @staticmethod
     def _lexical_score(query: str, passage: str) -> float:

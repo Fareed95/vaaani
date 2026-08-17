@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     nli_model: str = "cross-encoder/nli-deberta-v3-small"
-    enable_ml_models: bool = False
+    enable_ml_models: bool = True
     chunk_strategy: Literal["fixed", "semantic", "metadata"] = "metadata"
     chunk_size: int = 256
     chunk_overlap: float = Field(default=0.2, ge=0, lt=1)

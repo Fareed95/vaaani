@@ -51,7 +51,9 @@ async def test_pipeline_returns_citations_guardrails_and_timings() -> None:
 
 @pytest.mark.asyncio
 async def test_low_confidence_refusal_is_specific() -> None:
-    settings = Settings(qdrant_url=":memory:", confidence_threshold=0.9)
+    settings = Settings(
+        qdrant_url=":memory:", enable_ml_models=False, confidence_threshold=0.9
+    )
     services = ServiceContainer.build(settings)
     await asyncio.wait_for(services.initialize(), timeout=5)
     response = await asyncio.wait_for(

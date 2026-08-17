@@ -13,7 +13,7 @@ make build-index
 
 For a lightweight process without Docker, `make dev` defaults Qdrant to in-memory storage. That index lasts only for the API process, so use Docker for ingestion and durable development.
 
-Set `VAAANI_DATASET_LIMIT=100` for a quick first index. Set `VAAANI_ENABLE_ML_MODELS=true` to download and use the configured Sentence Transformers models; keep it false for deterministic, low-resource smoke tests.
+Set `VAAANI_DATASET_LIMIT=100` for a quick first index. The configured Sentence Transformers models are enabled by default and download on first use. Set `VAAANI_ENABLE_ML_MODELS=false` explicitly only for deterministic, low-resource offline tests.
 
 ## Credentials
 

@@ -24,14 +24,13 @@ class MultilingualEncoder:
             from sentence_transformers import SentenceTransformer
 
             return SentenceTransformer(self.model_name)
-        except Exception:
-            self.degraded = True
-            return None
+        except Exception as exc:
+            raise RuntimeError(f"embedding_model_unavailable:{self.model_name}") from exc
 
     @property
     def dimension(self) -> int:
         if self.model is not None:
-            return int(self.model.get_sentence_embedding_dimension())
+            return int(self.model.get_embedding_dimension())
         return self.fallback_size
 
     def _feature_hash(self, text: str) -> list[float]:
