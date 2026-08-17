@@ -58,11 +58,12 @@ export default function Home() {
           onAudio: (base64, mimeType) => setAudioUrl(`data:${mimeType};base64,${base64}`),
         },
       );
-      setConversation((current) => [
-        ...current,
-        { role: "user", content: transcript },
-        { role: "assistant", content: streamedAnswer.trim() },
-      ].slice(-12) as Array<{ role: "user" | "assistant"; content: string }>);
+      const newTurns: Array<{ role: "user" | "assistant"; content: string }> = [];
+      if (transcript.trim()) newTurns.push({ role: "user", content: transcript.trim() });
+      if (streamedAnswer.trim()) newTurns.push({ role: "assistant", content: streamedAnswer.trim() });
+      if (newTurns.length) {
+        setConversation((current) => [...current, ...newTurns].slice(-12));
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The request could not be completed.");
     } finally {
