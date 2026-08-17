@@ -77,8 +77,8 @@ export function VoiceRecorder({ disabled = false, onRecording }: VoiceRecorderPr
         {recording ? <Square size={24} fill="currentColor" /> : <Mic size={28} />}
       </button>
       <div className="record-caption" aria-live="polite">
-        <strong>{recording ? `Listening · 0:${seconds.toString().padStart(2, "0")}` : "Ask by voice"}</strong>
-        <span>{recording ? "Tap to send" : "Up to 30 seconds"}</span>
+        <strong>{recording ? `Listening · 0:${seconds.toString().padStart(2, "0")}` : "Tap to speak"}</strong>
+        <span>{recording ? "Tap when done" : "Voice or type below"}</span>
       </div>
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>

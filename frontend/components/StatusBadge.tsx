@@ -1,6 +1,6 @@
 "use client";
 
-import { Database, Radio } from "lucide-react";
+import { CheckCircle2, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getHealth, type HealthStatus } from "@/lib/api-client";
 
@@ -16,12 +16,12 @@ export function StatusBadge() {
     return <div className="status-badge is-offline"><Radio size={14} /><span>API offline</span></div>;
   }
   if (!health) {
-    return <div className="status-badge is-loading"><i /><span>Checking the index…</span></div>;
+    return <div className="status-badge is-loading"><i /><span>Preparing evidence…</span></div>;
   }
   return (
-    <div className="status-badge" title={`${health.retrieval_mode} · STT: ${health.stt_provider}`}>
-      <Database size={14} />
-      <span>{health.vector_db}: {health.indexed_chunks.toLocaleString()} chunks</span>
+    <div className="status-badge" title={`Voice provider: ${health.stt_provider}`}>
+      <CheckCircle2 size={14} />
+      <span>{health.status === "healthy" ? "Evidence ready" : "Evidence limited"}</span>
       <i className={health.status === "healthy" ? "healthy" : "degraded"} />
     </div>
   );
