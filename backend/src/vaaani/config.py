@@ -1,8 +1,8 @@
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
 
     qdrant_url: str = ":memory:"
     qdrant_api_key: str | None = None
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     chunk_size: int = 256
     chunk_overlap: float = Field(default=0.2, ge=0, lt=1)
     confidence_threshold: float = Field(default=0.4, ge=0, le=1)
-    languages: list[str] = ["en", "hi"]
+    languages: Annotated[list[str], NoDecode] = ["en", "hi"]
     dataset_name: str = "ai4bharat/MSMARCO-XI"
     dataset_split: str = "train"
     dataset_limit: int = 1000
