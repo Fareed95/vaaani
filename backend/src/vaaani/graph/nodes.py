@@ -147,12 +147,20 @@ class PipelineNodes:
     async def retrieve_node(self, state: GraphState) -> GraphState:
         async def operation(current: GraphState) -> GraphState:
             language = current["language"].split("-")[0]
-            dense_hits, corpus = await asyncio.gather(
-                self.dense.search(current["rewritten_query"], language=language, limit=50),
-                self.store.corpus(language=language, limit=2500),
+            if self.sparse.is_cached(language):
+                dense_hits = await self.dense.search(
+                    current["rewritten_query"], language=language, limit=50
+                )
+            else:
+                dense_hits, corpus = await asyncio.gather(
+                    self.dense.search(current["rewritten_query"], language=language, limit=50),
+                    self.store.corpus(language=language, limit=2500),
+                )
+                self.sparse.warm(language, corpus)
+            sparse_hits = self.sparse.rank(
+                current["rewritten_query"], limit=50, cache_key=language
             )
-            sparse_hits = self.sparse.rank(current["rewritten_query"], corpus, limit=50)
-            current["candidates"] = reciprocal_rank_fusion([dense_hits, sparse_hits], limit=20)
+            current["candidates"] = reciprocal_rank_fusion([dense_hits, sparse_hits], limit=10)
             return current
 
         def fallback(current: GraphState, _exc: Exception) -> GraphState:

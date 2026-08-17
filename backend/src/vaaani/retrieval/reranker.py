@@ -33,7 +33,9 @@ class CrossEncoderReranker:
         if not hits:
             return []
         if self.model is not None:
-            raw = self.model.predict([(query, hit.text) for hit in hits])
+            raw = self.model.predict(
+                [(query, hit.text[:300]) for hit in hits], batch_size=len(hits)
+            )
             scores = [1 / (1 + pow(2.718281828, -float(value))) for value in raw]
         else:
             scores = [

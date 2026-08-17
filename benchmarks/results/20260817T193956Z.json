@@ -1,5 +1,5 @@
 {
-  "timestamp": "20260817T190510Z",
+  "timestamp": "20260817T193956Z",
   "api_url": "http://localhost:8001",
   "requested_queries": 50,
   "successful_queries": 49,
@@ -14,64 +14,64 @@
   ],
   "percentiles": {
     "stt": {
-      "p50_ms": 0.005,
-      "p70_ms": 0.005,
-      "p100_ms": 0.01
-    },
-    "query_classify": {
-      "p50_ms": 0.026,
-      "p70_ms": 0.028,
-      "p100_ms": 0.051
-    },
-    "query_rewrite": {
-      "p50_ms": 0.009,
-      "p70_ms": 0.01,
-      "p100_ms": 0.017
-    },
-    "retrieve": {
-      "p50_ms": 164.938,
-      "p70_ms": 175.37,
-      "p100_ms": 407.601
-    },
-    "rerank": {
-      "p50_ms": 412.398,
-      "p70_ms": 1051.63,
-      "p100_ms": 1660.917
-    },
-    "confidence_gate": {
-      "p50_ms": 0.023,
-      "p70_ms": 0.025,
-      "p100_ms": 0.04
-    },
-    "refuse": {
       "p50_ms": 0.008,
       "p70_ms": 0.008,
-      "p100_ms": 0.011
+      "p100_ms": 0.025
+    },
+    "query_classify": {
+      "p50_ms": 0.037,
+      "p70_ms": 0.041,
+      "p100_ms": 0.083
+    },
+    "query_rewrite": {
+      "p50_ms": 0.015,
+      "p70_ms": 0.017,
+      "p100_ms": 0.053
+    },
+    "retrieve": {
+      "p50_ms": 76.01,
+      "p70_ms": 85.318,
+      "p100_ms": 296.077
+    },
+    "rerank": {
+      "p50_ms": 117.663,
+      "p70_ms": 240.499,
+      "p100_ms": 323.939
+    },
+    "confidence_gate": {
+      "p50_ms": 0.028,
+      "p70_ms": 0.031,
+      "p100_ms": 0.043
+    },
+    "refuse": {
+      "p50_ms": 0.01,
+      "p70_ms": 0.013,
+      "p100_ms": 0.015
     },
     "response": {
-      "p50_ms": 0.008,
-      "p70_ms": 0.009,
-      "p100_ms": 0.018
+      "p50_ms": 0.013,
+      "p70_ms": 0.015,
+      "p100_ms": 0.082
     },
     "total": {
-      "p50_ms": 14098.59,
-      "p70_ms": 14751.541,
-      "p100_ms": 18495.135
+      "p50_ms": 12743.592,
+      "p70_ms": 13854.18,
+      "p100_ms": 20627.616
     },
     "generate": {
-      "p50_ms": 6209.49,
-      "p70_ms": 7085.381,
-      "p100_ms": 9838.845
+      "p50_ms": 6043.192,
+      "p70_ms": 7036.333,
+      "p100_ms": 12073.058
     },
     "groundedness_check": {
-      "p50_ms": 402.611,
-      "p70_ms": 412.985,
-      "p100_ms": 755.565
+      "p50_ms": 514.862,
+      "p70_ms": 528.087,
+      "p100_ms": 585.526
     },
     "tts": {
-      "p50_ms": 6864.99,
-      "p70_ms": 7262.797,
-      "p100_ms": 8374.355
+      "p50_ms": 6300.55,
+      "p70_ms": 6779.89,
+      "p100_ms": 8361.129
     }
   },
   "note": "Real benchmark against the running Vaaani API with persistent Qdrant index (8982 real MSMARCO-XI chunks, 6 languages), real MPNet embeddings, real cross-encoder reranking, real OpenRouter LLM generation (anthropic/claude-sonnet-4.5), real NLI groundedness checking. Sarvam STT/TTS not exercised in this text-only benchmark (verified separately in a live voice round trip)."
