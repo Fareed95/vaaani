@@ -232,9 +232,21 @@ class PipelineNodes:
                 current["refusal_reason"] = decision.reason
             return current
 
-        return await self._run(
-            state, "groundedness_check", operation, lambda current, _exc: current
-        )
+        def fallback(current: GraphState, exc: Exception) -> GraphState:
+            current["refused"] = True
+            current["refusal_reason"] = "groundedness_check_unavailable"
+            current["guardrails"].append(
+                {
+                    "guardrail": "groundedness_entailment",
+                    "passed": False,
+                    "reason": "groundedness_check_unavailable",
+                    "details": {"error_type": type(exc).__name__},
+                }
+            )
+            current["degraded_services"].append("nli_groundedness")
+            return current
+
+        return await self._run(state, "groundedness_check", operation, fallback)
 
     async def refuse_node(self, state: GraphState) -> GraphState:
         async def operation(current: GraphState) -> GraphState:

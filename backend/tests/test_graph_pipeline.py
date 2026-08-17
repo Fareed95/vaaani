@@ -60,3 +60,52 @@ async def test_low_confidence_refusal_is_specific() -> None:
     assert response.refused
     assert response.refusal_reason == "no_retrieval_results"
     assert "no_retrieval_results" in response.answer
+
+
+@pytest.mark.asyncio
+async def test_groundedness_provider_failure_is_fail_closed_after_retries() -> None:
+    settings = Settings(
+        qdrant_url=":memory:",
+        enable_ml_models=False,
+        confidence_threshold=0.05,
+        sarvam_api_key=None,
+        llm_api_key=None,
+    )
+    services = ServiceContainer.build(settings)
+    await services.initialize()
+    chunk = MetadataAwareChunker().chunk(
+        Document(
+            text="The Gateway of India is a monument in Mumbai overlooking the Arabian Sea.",
+            passage_id="gateway",
+            language="en",
+            source_lang="eng_Latn",
+            target_lang="eng_Latn",
+        )
+    )[0]
+    await services.store.upsert([chunk], services.encoder.encode([chunk.text]))
+
+    attempts = 0
+
+    def failing_check(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        nonlocal attempts
+        attempts += 1
+        raise RuntimeError("nli provider unavailable")
+
+    services.nodes.groundedness.check = failing_check  # type: ignore[method-assign]
+    response = await services.query(
+        QueryRequest(query="Where is the Gateway of India?", language="en-IN")
+    )
+
+    assert attempts == 3
+    assert response.refused is True
+    assert response.refusal_reason == "groundedness_check_unavailable"
+    assert "groundedness_check_unavailable" in response.answer
+    assert "nli_groundedness" in response.degraded_services
+    decision = next(
+        item for item in response.guardrails if item.guardrail == "groundedness_entailment"
+    )
+    assert decision.passed is False
+    assert decision.reason == "groundedness_check_unavailable"
+    assert decision.details["error_type"] == "RuntimeError"
+    timing = next(item for item in response.timings if item.stage == "groundedness_check")
+    assert timing.status == "error"
