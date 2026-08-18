@@ -1,0 +1,83 @@
+{
+  "timestamp": "20260818T163819Z",
+  "api_url": "https://vaaani-api-production.up.railway.app",
+  "deployment": "Railway (US East) + Qdrant Cloud (us-east-1), fallback embeddings",
+  "requested_queries": 50,
+  "successful_queries": 50,
+  "failed_queries": 0,
+  "languages": [
+    "bn",
+    "en",
+    "gu",
+    "hi",
+    "pa",
+    "ur"
+  ],
+  "percentiles": {
+    "stt": {
+      "p50_ms": 0.011,
+      "p70_ms": 0.012,
+      "p100_ms": 0.047
+    },
+    "query_classify": {
+      "p50_ms": 0.054,
+      "p70_ms": 0.064,
+      "p100_ms": 0.426
+    },
+    "query_rewrite": {
+      "p50_ms": 0.024,
+      "p70_ms": 0.026,
+      "p100_ms": 1.129
+    },
+    "retrieve": {
+      "p50_ms": 58.725,
+      "p70_ms": 71.445,
+      "p100_ms": 382.119
+    },
+    "rerank": {
+      "p50_ms": 0.904,
+      "p70_ms": 1.122,
+      "p100_ms": 5.068
+    },
+    "confidence_gate": {
+      "p50_ms": 0.039,
+      "p70_ms": 0.045,
+      "p100_ms": 0.321
+    },
+    "generate": {
+      "p50_ms": 5208.536,
+      "p70_ms": 5790.639,
+      "p100_ms": 11126.535
+    },
+    "groundedness_check": {
+      "p50_ms": 0.575,
+      "p70_ms": 0.746,
+      "p100_ms": 5.632
+    },
+    "refuse": {
+      "p50_ms": 0.02,
+      "p70_ms": 0.023,
+      "p100_ms": 0.727
+    },
+    "response": {
+      "p50_ms": 0.019,
+      "p70_ms": 0.022,
+      "p100_ms": 0.093
+    },
+    "total": {
+      "p50_ms": 5579.547,
+      "p70_ms": 6539.621,
+      "p100_ms": 11481.7
+    },
+    "tts": {
+      "p50_ms": 2668.124,
+      "p70_ms": 2733.749,
+      "p100_ms": 2789.566
+    }
+  },
+  "retrieval_pipeline_combined": {
+    "p50_ms": 59.63,
+    "p70_ms": 72.57
+  },
+  "note": "Real benchmark against the LIVE deployed Railway API with persistent Qdrant Cloud index (8982 real MSMARCO-XI chunks, 6 languages). Fallback (feature-hash) embeddings and lexical reranking are used in production to fit the free-tier 1GB RAM limit; retrieval pipeline (retrieve+rerank) is well under the 200ms target as a result."
+}
