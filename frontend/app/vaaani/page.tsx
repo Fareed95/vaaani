@@ -1,7 +1,7 @@
 "use client";
 
 import gsap from "gsap";
-import { ArrowLeft, ArrowUp, Command } from "lucide-react";
+import { ArrowLeft, ArrowUp, Command, Github } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { AnswerCard } from "@/components/AnswerCard";
@@ -104,6 +104,15 @@ export default function VaaaniPage() {
         </a>
         <div className="topbar-actions">
           <StatusBadge />
+          <a
+            href="https://github.com/Fareed95/vaaani"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="icon-button"
+            aria-label="View source on GitHub"
+          >
+            <Github size={18} />
+          </a>
         </div>
       </header>
 

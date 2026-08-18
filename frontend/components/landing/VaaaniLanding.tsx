@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- fixed public art plates need raw layered image elements. */
 
 import gsap from "gsap";
-import { ArrowRight, BookOpenText, Languages, Mic2, RotateCcw, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpenText, Github, Languages, Mic2, RotateCcw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import styles from "./VaaaniLanding.module.css";
@@ -171,6 +171,16 @@ export function VaaaniLanding() {
         >
           <RotateCcw size={17} aria-hidden="true" />
         </button>
+
+        <a
+          href="https://github.com/Fareed95/vaaani"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.githubLink}
+          aria-label="View source on GitHub"
+        >
+          <Github size={17} aria-hidden="true" />
+        </a>
       </main>
 
       <section className={styles.productBand} aria-labelledby="landing-product-title">

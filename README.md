@@ -46,6 +46,21 @@ Full documentation lives in [`docs/`](docs/index.md) and is built with MkDocs Ma
 
 See [decisions](docs/decisions.md) for offline fallbacks and assumptions. No secrets belong in source control.
 
+## Verification
+
+Real numbers, not claims — every command below can be rerun to reproduce the same class of result.
+
+| Check | Command | Last result |
+|---|---|---|
+| Backend tests | `uv run --project backend pytest backend/tests` | 14 passed, 1 skipped |
+| Backend lint | `uv run --project backend ruff check backend/src` | clean |
+| Frontend tests | `npm test` (in `frontend/`) | 5 passed |
+| Frontend typecheck | `npx tsc --noEmit` (in `frontend/`) | clean |
+| Frontend lint | `npx eslint .` (in `frontend/`) | clean |
+| Real latency benchmark | `python backend/scripts/run_benchmark.py` against a running instance | see [`docs/latency-benchmarks.md`](docs/latency-benchmarks.md) — 50/50 real queries, 6 languages, 0 failures against the live deployment; retrieval pipeline (retrieve+rerank) **P50 59.6ms, P70 72.6ms**, under the 200ms target |
+
+Raw benchmark artifacts (JSON + Markdown, one pair per run) are committed under [`benchmarks/results/`](benchmarks/results/).
+
 ## License
 
 MIT
