@@ -22,7 +22,7 @@ services:
     environment:
       VAAANI_QDRANT_URL: http://qdrant:6333
     ports:
-      - "8000:8000"
+      - "8000:7860"
     depends_on:
       qdrant:
         condition: service_healthy
