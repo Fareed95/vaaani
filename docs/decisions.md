@@ -2,7 +2,9 @@
 
 ## Provider modes
 
-The default production path uses multilingual MPNet, MiniLM reranking, DeBERTa NLI, an OpenAI-compatible LLM, Qdrant, and Sarvam. Model loading now fails explicitly when a configured embedding or reranking model is unavailable; it does not silently replace production retrieval. Set `VAAANI_ENABLE_ML_MODELS=false` only for offline tests and constrained smoke runs. In that explicit mode, retrieval uses normalized Unicode feature hashing and reranking uses lexical coverage plus fused rank. The selected fallback mode is surfaced in `degraded_services`.
+The intended production path uses multilingual MPNet, MiniLM reranking, DeBERTa NLI, an OpenAI-compatible LLM, Qdrant, and Sarvam, and this is what runs locally by default. Model loading fails explicitly when a configured embedding or reranking model is unavailable; it does not silently replace production retrieval.
+
+The live deployment runs with `VAAANI_ENABLE_ML_MODELS=false`: real MPNet + reranker + NLI need roughly 1.7GB RAM once loaded, which exceeds the 1GB ceiling on every free hosting tier tried (Render, Railway). In that mode, retrieval uses normalized Unicode feature hashing and reranking/groundedness use lexical coverage instead of the neural models. The selected fallback mode is surfaced in `degraded_services`. The trade-off is retrieval quality — particularly cross-lingual matching, which feature hashing cannot do — not pipeline structure, chunking, latency instrumentation, harnessing, or guardrail presence, all of which are unaffected.
 
 ## Current Sarvam models
 

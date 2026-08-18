@@ -1,6 +1,6 @@
 site_name: Vaaani
 site_description: Voice-enabled multilingual RAG for Indian languages
-repo_url: https://github.com/your-org/vaaani
+repo_url: https://github.com/Fareed95/vaaani
 theme:
   name: material
   palette:

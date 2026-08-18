@@ -31,15 +31,18 @@ The backend is a typed LangGraph state machine. Qdrant payload indexes keep lang
 
 `make setup`, `make dev`, `make test`, `make lint`, `make build-index`, `make benchmark`, `make docs-serve`, `make docs-build`, `make docker-up`, `make deploy-backend`, and `make deploy-frontend` are the supported entrypoints.
 
-Full documentation lives in [`docs/`](docs/index.md) and is built with MkDocs Material. Hosted docs: **deployment URL to be added after publishing**. Live application: **deployment URL to be added after publishing**.
+Full documentation lives in [`docs/`](docs/index.md) and is built with MkDocs Material.
+
+**Live application**: https://frontend-five-liard.vercel.app/vaaani
+**Live API**: https://vaaani-api-production.up.railway.app
 
 ## Data and models
 
 - Dataset: `ai4bharat/MSMARCO-XI`
-- Embeddings: `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`
-- Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2`
-- Groundedness: `cross-encoder/nli-deberta-v3-small`
-- Speech: Sarvam AI STT and TTS
+- Embeddings: `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` locally (`VAAANI_ENABLE_ML_MODELS=true`); the live deployment runs the feature-hash/lexical fallback (`VAAANI_ENABLE_ML_MODELS=false`) since the real models need ~1.7GB RAM, more than the free hosting tier's 1GB ceiling
+- Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` (same fallback note as above)
+- Groundedness: `cross-encoder/nli-deberta-v3-small` (same fallback note as above)
+- Speech: Sarvam AI STT and TTS (real in both local and deployed)
 
 See [decisions](docs/decisions.md) for offline fallbacks and assumptions. No secrets belong in source control.
 
