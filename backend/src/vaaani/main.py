@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,6 +11,18 @@ from vaaani.api.routes_query import router as query_router
 from vaaani.config import get_settings
 from vaaani.services import ServiceContainer
 
+logger = logging.getLogger(__name__)
+
+
+def _warm_models(services: ServiceContainer) -> None:
+    # Touch each lazy-loaded model once so the first real request doesn't pay
+    # for a cold sentence-transformers/cross-encoder download+load, which can
+    # exceed a platform's request timeout on a fresh container.
+    _ = services.encoder.model
+    _ = services.nodes.reranker.model
+    _ = services.nodes.groundedness.model
+    logger.info("Model warm-up complete")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -20,7 +33,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         await services.initialize()
     except Exception as exc:
-        logging.getLogger(__name__).warning("Qdrant initialization deferred: %s", exc)
+        logger.warning("Qdrant initialization deferred: %s", exc)
+    if settings.enable_ml_models:
+        asyncio.create_task(asyncio.to_thread(_warm_models, services))
     yield
 
 
