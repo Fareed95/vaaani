@@ -1,0 +1,205 @@
+"use client";
+
+import gsap from "gsap";
+import { ArrowLeft, ArrowUp, Command } from "lucide-react";
+import Link from "next/link";
+import { FormEvent, useLayoutEffect, useRef, useState } from "react";
+import { AnswerCard } from "@/components/AnswerCard";
+import { GuardrailBanner } from "@/components/GuardrailBanner";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { LatencyDashboard } from "@/components/LatencyDashboard";
+import { SampleQueryButtons } from "@/components/SampleQueryButtons";
+import { StatusBadge } from "@/components/StatusBadge";
+import { TranscriptDisplay } from "@/components/TranscriptDisplay";
+import { VoiceRecorder } from "@/components/VoiceRecorder";
+import {
+  blobToBase64,
+  streamQuery,
+  type LanguageCode,
+  type QueryMetadata,
+} from "@/lib/api-client";
+
+export default function VaaaniPage() {
+  const shellRef = useRef<HTMLElement | null>(null);
+  const [language, setLanguage] = useState<LanguageCode>("en-IN");
+  const [query, setQuery] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [metadata, setMetadata] = useState<QueryMetadata>();
+  const [audioUrl, setAudioUrl] = useState<string>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>();
+  const [conversation, setConversation] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+
+  useLayoutEffect(() => {
+    document.documentElement.removeAttribute("data-theme");
+    const shell = shellRef.current;
+    if (!shell || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const context = gsap.context(() => {
+      gsap.from(".console-nav", { duration: 0.65, ease: "power3.out", opacity: 0, y: -18 });
+      gsap.from(".console-hero > *", { duration: 0.85, ease: "power3.out", opacity: 0, stagger: 0.08, y: 24 });
+      gsap.from(".studio > *", { duration: 0.9, ease: "power3.out", opacity: 0, stagger: 0.08, y: 24 });
+    }, shell);
+
+    return () => context.revert();
+  }, []);
+
+  async function ask(payload: { query?: string; audio_base64?: string; audio_mime_type?: string }) {
+    setLoading(true);
+    setError(undefined);
+    setAnswer("");
+    setMetadata(undefined);
+    setAudioUrl(undefined);
+    let streamedAnswer = "";
+    let transcript = payload.query ?? "";
+    try {
+      await streamQuery(
+        { ...payload, language, conversation },
+        {
+          onMetadata: (value) => {
+            transcript = value.transcript;
+            setMetadata(value);
+          },
+          onToken: (token) => {
+            streamedAnswer += token;
+            setAnswer((current) => current + token);
+          },
+          onAudio: (base64, mimeType) => setAudioUrl(`data:${mimeType};base64,${base64}`),
+        },
+      );
+      const newTurns: Array<{ role: "user" | "assistant"; content: string }> = [];
+      if (transcript.trim()) newTurns.push({ role: "user", content: transcript.trim() });
+      if (streamedAnswer.trim()) newTurns.push({ role: "assistant", content: streamedAnswer.trim() });
+      if (newTurns.length) {
+        setConversation((current) => [...current, ...newTurns].slice(-12));
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The request could not be completed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!query.trim() || loading) return;
+    const text = query.trim();
+    setQuery("");
+    await ask({ query: text });
+  }
+
+  async function useRecording(blob: Blob) {
+    await ask({ audio_base64: await blobToBase64(blob), audio_mime_type: blob.type });
+  }
+
+  return (
+    <main ref={shellRef} className="vaaani-experience">
+      <header className="console-nav">
+        <Link href="/" className="back-link">
+          <ArrowLeft size={16} /> Landing
+        </Link>
+        <a href="#compose" className="brand" aria-label="Vaaani console">
+          <span className="brand-mark">वा</span>
+          <span><strong>Vaaani</strong><small>वाणी · grounded voice console</small></span>
+        </a>
+        <div className="topbar-actions">
+          <StatusBadge />
+        </div>
+      </header>
+
+      <section className="console-hero">
+        <p className="eyebrow"><span>Console</span><i /></p>
+        <h1>Ask. Verify.<br /><em>Then listen.</em></h1>
+        <p>
+          A calmer way to ask across Indian languages: speak naturally, see what
+          supported the answer, and play audio only when the response is grounded.
+        </p>
+      </section>
+
+      <section className="studio" id="compose">
+        <div className="side-stack">
+          <div className="compose-card">
+            <header className="card-heading">
+              <div>
+                <span>Question</span>
+                <h2>Start with your voice.</h2>
+              </div>
+              <LanguageSelector value={language} onChange={setLanguage} />
+            </header>
+
+            <div className="ask-zone">
+              <VoiceRecorder disabled={loading} onRecording={useRecording} />
+              <div className="or-divider"><span>or type</span></div>
+              <form className="query-form" onSubmit={submit}>
+                <textarea
+                  rows={2}
+                  value={query}
+                  disabled={loading}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  placeholder={language === "hi-IN" ? "अपना सवाल यहाँ लिखें…" : "Ask a question from the indexed evidence…"}
+                  aria-label="Question"
+                />
+                <button type="submit" disabled={!query.trim() || loading} aria-label="Ask question">
+                  {loading ? <i className="button-loader" /> : <ArrowUp size={21} />}
+                </button>
+                <kbd><Command size={11} /> ↵</kbd>
+              </form>
+              <SampleQueryButtons disabled={loading} onSelect={(sample) => { setQuery(""); void ask({ query: sample }); }} />
+            </div>
+          </div>
+
+          <aside className="evidence-rail">
+            <div className="rail-heading">
+              <span>Evidence</span>
+              <small>{metadata ? `${metadata.citations.length} sources selected` : "Waiting for a question"}</small>
+            </div>
+            <LatencyDashboard timings={metadata?.timings ?? []} total={metadata?.total_duration_ms ?? 0} />
+            {metadata?.degraded_services.length ? (
+              <div className="degraded-note"><strong>Local fallbacks active</strong><span>{metadata.degraded_services.join(" · ").replaceAll("_", " ")}</span></div>
+            ) : null}
+            <div className="rail-footnote">
+              <i />
+              <p><strong>Grounded by design.</strong> Low-confidence or unsupported answers stop before speech synthesis.</p>
+            </div>
+          </aside>
+        </div>
+
+        <section className="response-card" aria-label="Vaaani response">
+          <header className="card-heading">
+            <div>
+              <span>Answer</span>
+              <h2>Grounded response.</h2>
+            </div>
+            <small>{metadata ? `${Math.round(metadata.confidence * 100)}% confidence` : "Ready"}</small>
+          </header>
+          {error && (
+            <div className="request-error" role="alert">
+              <strong>The answer service could not be reached.</strong>
+              <span>{error} Check that the API is running at the configured URL, then try again.</span>
+            </div>
+          )}
+          {metadata && <TranscriptDisplay transcript={metadata.transcript} />}
+          {metadata && <GuardrailBanner refused={metadata.refused} reason={metadata.refusal_reason ?? undefined} guardrails={metadata.guardrails} />}
+          {!answer && !loading && !error ? (
+            <div className="answer-empty">
+              <span>Nothing asked yet</span>
+              <p>Your answer will appear here with citation controls and optional audio playback.</p>
+            </div>
+          ) : null}
+          <AnswerCard answer={answer} loading={loading} citations={metadata?.citations ?? []} audioUrl={audioUrl} />
+        </section>
+      </section>
+
+      <footer>
+        <span>Vaaani</span>
+        <span>Grounded voice answers</span>
+      </footer>
+    </main>
+  );
+}
