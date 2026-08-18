@@ -26,7 +26,7 @@ class QdrantVectorStore:
         self.client = (
             QdrantClient(location=":memory:")
             if self.local
-            else QdrantClient(url=url, api_key=api_key, timeout=5)
+            else QdrantClient(url=url, api_key=api_key, timeout=30)
         )
 
     async def _execute(self, operation):  # type: ignore[no-untyped-def]

@@ -10,5 +10,5 @@ RUN uv sync --project backend --frozen --no-dev
 ENV HF_HOME=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface && chmod -R 777 /app/.cache
 
-EXPOSE 7860
-CMD ["uv", "run", "--no-sync", "--project", "backend", "uvicorn", "vaaani.main:app", "--host", "0.0.0.0", "--port", "7860"]
+EXPOSE 8080
+CMD uv run --no-sync --project backend uvicorn vaaani.main:app --host 0.0.0.0 --port ${PORT:-8080}
