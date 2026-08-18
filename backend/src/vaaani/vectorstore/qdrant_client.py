@@ -33,6 +33,9 @@ class QdrantVectorStore:
         # QdrantLocal owns thread-affine locks; remote I/O belongs in a worker thread.
         return operation() if self.local else await asyncio.to_thread(operation)
 
+    async def exists(self) -> bool:
+        return await self._execute(lambda: self.client.collection_exists(self.collection))
+
     async def ensure_collection(self, vector_size: int, recreate: bool = False) -> None:
         def operation() -> None:
             existing = self.client.collection_exists(self.collection)

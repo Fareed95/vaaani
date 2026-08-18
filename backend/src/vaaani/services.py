@@ -65,7 +65,12 @@ class ServiceContainer:
         )
 
     async def initialize(self) -> None:
-        await self.store.ensure_collection(self.encoder.dimension)
+        # Only touch encoder.dimension (which forces the embedding model to load)
+        # when the collection doesn't exist yet. On a redeploy against an
+        # already-built index, this keeps startup fast and avoids re-downloading
+        # the model before the platform's health check window closes.
+        if not await self.store.exists():
+            await self.store.ensure_collection(self.encoder.dimension)
 
     async def query(self, request: QueryRequest) -> QueryResponse:
         audio: bytes | None = None
