@@ -1,19 +1,19 @@
 "use client";
 
-import { AudioLines, BookOpenText, Volume2 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { AudioLines, Volume2 } from "lucide-react";
+import { Fragment } from "react";
 import type { Citation } from "@/lib/api-client";
-import { SourceCitation } from "./SourceCitation";
 
 interface AnswerCardProps {
   answer: string;
   citations: Citation[];
   loading: boolean;
   audioUrl?: string;
+  /** Chunks live in the rail, so an inline marker opens them there. */
+  onCitationSelect?: (rank: number) => void;
 }
 
-export function AnswerCard({ answer, citations, loading, audioUrl }: AnswerCardProps) {
-  const [expandedSources, setExpandedSources] = useState<number[]>([]);
+export function AnswerCard({ answer, citations, loading, audioUrl, onCitationSelect }: AnswerCardProps) {
   if (!answer && !loading) return null;
   const answerParts = answer.split(/(\[\d+\])/g);
   return (
@@ -38,14 +38,9 @@ export function AnswerCard({ answer, citations, loading, audioUrl }: AnswerCardP
                   type="button"
                   className="inline-citation"
                   aria-label={`Toggle source ${rank}`}
-                  aria-controls={`source-${rank}`}
-                  aria-expanded={expandedSources.includes(rank)}
+                  aria-controls={`chunk-${rank}`}
                   key={`${part}-${index}`}
-                  onClick={() => setExpandedSources((current) =>
-                    current.includes(rank)
-                      ? current.filter((value) => value !== rank)
-                      : [...current, rank]
-                  )}
+                  onClick={() => onCitationSelect?.(rank)}
                 >
                   {part}
                 </button>
@@ -54,23 +49,6 @@ export function AnswerCard({ answer, citations, loading, audioUrl }: AnswerCardP
           : "Finding the strongest evidence…"}
       </div>
       {audioUrl && <audio className="audio-player" controls src={audioUrl}>Your browser cannot play this answer.</audio>}
-      {citations.length > 0 && (
-        <section className="sources">
-          <h2><BookOpenText size={17} /> Evidence used <span>{citations.length}</span></h2>
-          {citations.map((citation) => (
-            <SourceCitation
-              key={`${citation.passage_id}-${citation.rank}`}
-              citation={citation}
-              expanded={expandedSources.includes(citation.rank)}
-              onToggle={(expanded) => setExpandedSources((current) =>
-                expanded
-                  ? Array.from(new Set([...current, citation.rank]))
-                  : current.filter((value) => value !== citation.rank)
-              )}
-            />
-          ))}
-        </section>
-      )}
     </article>
   );
 }

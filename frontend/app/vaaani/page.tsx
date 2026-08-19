@@ -61,6 +61,7 @@ export default function VaaaniPage() {
   const [loading, setLoading] = useState(false);
   const [stageLabel, setStageLabel] = useState<string>();
   const [liveStages, setLiveStages] = useState<string[]>([]);
+  const [expandedChunks, setExpandedChunks] = useState<number[]>([]);
   const [error, setError] = useState<string>();
   const [conversation, setConversation] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
@@ -87,6 +88,7 @@ export default function VaaaniPage() {
     setAudioUrl(undefined);
     setStageLabel(payload.audio_base64 ? STAGE_LABELS.stt : "Starting…");
     setLiveStages([]);
+    setExpandedChunks([]);
     let streamedAnswer = "";
     let transcript = payload.query ?? "";
     try {
@@ -241,8 +243,22 @@ export default function VaaaniPage() {
               <span>Evidence</span>
               <small>{citationsShown.length ? `${citationsShown.length} chunks retrieved` : loading ? "Searching the index…" : "Waiting for a question"}</small>
             </div>
-            <RetrievedChunks chunks={citationsShown} running={loading} />
-            <LatencyDashboard timings={metadata?.timings ?? []} liveStages={liveStages} running={loading} />
+            <RetrievedChunks
+              chunks={citationsShown}
+              running={loading}
+              expanded={expandedChunks}
+              onToggle={(rank, open) =>
+                setExpandedChunks((current) =>
+                  open ? Array.from(new Set([...current, rank])) : current.filter((value) => value !== rank),
+                )
+              }
+            />
+            <LatencyDashboard
+              timings={evidence?.timings ?? []}
+              pipelineDuration={evidence?.pipeline_duration_ms}
+              liveStages={liveStages}
+              running={loading}
+            />
             {metadata?.degraded_services.length ? (
               <div className="degraded-note"><strong>Local fallbacks active</strong><span>{metadata.degraded_services.join(" · ").replaceAll("_", " ")}</span></div>
             ) : null}
@@ -281,7 +297,16 @@ export default function VaaaniPage() {
               <p>{stageLabel}</p>
             </div>
           ) : null}
-          <AnswerCard answer={answer} loading={loading} citations={citationsShown} audioUrl={audioUrl} />
+          <AnswerCard
+            answer={answer}
+            loading={loading}
+            citations={citationsShown}
+            audioUrl={audioUrl}
+            onCitationSelect={(rank) => {
+              setExpandedChunks((current) => Array.from(new Set([...current, rank])));
+              document.getElementById(`chunk-${rank}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
         </section>
       </section>
 

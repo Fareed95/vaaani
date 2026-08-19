@@ -43,6 +43,8 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
                         "citations": [
                             citation.model_dump(mode="json") for citation in item.citations
                         ],
+                        "timings": [timing.model_dump(mode="json") for timing in item.timings],
+                        "pipeline_duration_ms": item.pipeline_duration_ms,
                     }
                     yield f"event: evidence\ndata: {json.dumps(evidence)}\n\n"
                 elif isinstance(item, AnswerPreview):

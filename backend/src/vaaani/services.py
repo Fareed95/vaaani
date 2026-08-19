@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from vaaani.api.schemas import Citation, QueryRequest, QueryResponse
+from vaaani.api.schemas import Citation, QueryRequest, QueryResponse, StageTiming
 from vaaani.config import Settings
 from vaaani.embeddings.multilingual_encoder import MultilingualEncoder
 from vaaani.generation.answer_generator import AnswerGenerator
@@ -25,12 +25,16 @@ from vaaani.vectorstore.qdrant_client import QdrantVectorStore
 
 @dataclass(slots=True)
 class EvidencePreview:
-    """Retrieval result, streamed before generation starts."""
+    """Retrieval result plus the settled pipeline timings, streamed before
+    generation starts. The pipeline budget is spent by this point, so the
+    score is final here — nothing after this belongs to it."""
 
     transcript: str
     confidence: float
     refused: bool
     citations: list[Citation]
+    timings: list[StageTiming]
+    pipeline_duration_ms: float
 
 
 @dataclass(slots=True)
@@ -180,11 +184,14 @@ class ServiceContainer:
 
                 if not evidence_sent and stage in {"confidence_gate", "refuse"}:
                     evidence_sent = True
+                    timings = [StageTiming(**item) for item in last_state["timings"]]
                     yield EvidencePreview(
                         transcript=last_state["transcript"],
                         confidence=last_state["confidence"],
                         refused=last_state["refused"],
                         citations=_build_citations(last_state),
+                        timings=timings,
+                        pipeline_duration_ms=round(sum(item.duration_ms for item in timings), 3),
                     )
 
                 # The graph is driven by this loop, so yielding here means the

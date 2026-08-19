@@ -40,38 +40,40 @@ describe("Vaaani interface", () => {
     expect(screen.getByText(/Confidence 31% · required 55%/)).toBeInTheDocument();
   });
 
-  it("times pipeline stages and leaves provider stages untimed", () => {
-    render(
+  it("scores the pipeline as soon as evidence lands, with the rest as progress", () => {
+    const { container } = render(
       <LatencyDashboard
+        pipelineDuration={20}
+        running
+        liveStages={["retrieve", "confidence_gate"]}
         timings={[
           { stage: "retrieve", started_at: "a", ended_at: "b", duration_ms: 20, status: "ok" },
-          { stage: "generate", started_at: "b", ended_at: "c", duration_ms: 110, status: "ok" },
         ]}
       />,
     );
-    expect(screen.getByText("Hybrid retrieval")).toBeInTheDocument();
-    expect(screen.getByText("Generation")).toBeInTheDocument();
-    expect(screen.getAllByText("20.0 ms").length).toBeGreaterThan(0);
-    expect(screen.queryByText("110.0 ms")).not.toBeInTheDocument();
-  });
-
-  it("reports stage progress without guessing timings while in flight", () => {
-    const { container } = render(
-      <LatencyDashboard timings={[]} running liveStages={["retrieve", "confidence_gate"]} />,
-    );
     const panel = within(container);
     expect(panel.getByText("Hybrid retrieval")).toBeInTheDocument();
-    expect(panel.getByText("measuring…")).toBeInTheDocument();
-    expect(panel.queryByText(/ms/)).not.toBeInTheDocument();
-    expect(panel.queryByText(/200ms target/)).not.toBeInTheDocument();
-    expect(panel.getAllByText("working")).toHaveLength(2);
+    expect(panel.getAllByText("20.0 ms").length).toBeGreaterThan(0);
+    expect(panel.getByText(/under the 200ms target/)).toBeInTheDocument();
+    // Generation, evidence check, voice synthesis, response — progress only.
+    expect(panel.getAllByText("working")).toHaveLength(4);
+    expect(panel.getByText("Generation")).toBeInTheDocument();
   });
 
-  it("opens cited evidence from an inline reference", () => {
+  it("waits for the server trace instead of guessing a number", () => {
+    const { container } = render(<LatencyDashboard timings={[]} running liveStages={["retrieve"]} />);
+    const panel = within(container);
+    expect(panel.getByText(/Running the retrieval pipeline/)).toBeInTheDocument();
+    expect(panel.queryByText(/ms/)).not.toBeInTheDocument();
+  });
+
+  it("routes an inline reference to the chunk in the rail", () => {
+    const onCitationSelect = vi.fn();
     render(
       <AnswerCard
         answer="Mumbai is on the Arabian Sea. [1]"
         loading={false}
+        onCitationSelect={onCitationSelect}
         citations={[{
           rank: 1,
           passage_id: "p1",
@@ -82,8 +84,10 @@ describe("Vaaani interface", () => {
         }]}
       />,
     );
+    // The answer card no longer lists sources — the rail is the only listing.
+    expect(screen.queryByText(/Evidence used/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Toggle source 1" }));
-    expect(document.querySelector("#source-1")).toHaveAttribute("open");
+    expect(onCitationSelect).toHaveBeenCalledWith(1);
   });
 
   it("shows retrieved chunks while the answer is still generating", () => {

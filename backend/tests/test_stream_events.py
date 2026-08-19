@@ -4,8 +4,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from vaaani.api.routes_query import router as query_router
-from vaaani.api.schemas import Citation, QueryResponse
+from vaaani.api.schemas import Citation, QueryResponse, StageTiming
 from vaaani.services import AnswerPreview, EvidencePreview
+
+TIMING = StageTiming(
+    stage="retrieve",
+    started_at="2026-08-20T00:00:00Z",
+    ended_at="2026-08-20T00:00:00.012Z",
+    duration_ms=11.6,
+    status="ok",
+)
 
 CITATION = Citation(
     rank=1,
@@ -28,6 +36,8 @@ class _ScriptedServices:
             confidence=0.82,
             refused=False,
             citations=[CITATION],
+            timings=[TIMING],
+            pipeline_duration_ms=12.0,
         )
         yield "confidence_gate"
         yield AnswerPreview(answer="It is in Mumbai.")
@@ -65,3 +75,5 @@ def test_stream_orders_evidence_and_answer_ahead_of_the_provider_stages() -> Non
     # response.
     assert response.text.count('"token"') == len("It is in Mumbai.".split())
     assert '"passage_id": "gateway"' in response.text
+    # The pipeline score ships with the evidence, not with the final metadata.
+    assert '"pipeline_duration_ms": 12.0' in response.text

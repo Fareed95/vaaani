@@ -38,6 +38,9 @@ export interface EvidencePreview {
   confidence: number;
   refused: boolean;
   citations: Citation[];
+  /** Stages up to the confidence gate — the whole pipeline budget. */
+  timings: StageTiming[];
+  pipeline_duration_ms: number;
 }
 
 export interface GuardrailDecision {
