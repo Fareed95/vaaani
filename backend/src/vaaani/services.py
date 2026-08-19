@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import binascii
 import uuid
@@ -39,9 +40,17 @@ class EvidencePreview:
 
 @dataclass(slots=True)
 class AnswerPreview:
-    """Verified answer text, streamed before voice synthesis starts."""
+    """Verified answer text, streamed before voice synthesis starts. Only used
+    when the provider can't stream — otherwise TokenChunk carries the answer."""
 
     answer: str
+
+
+@dataclass(slots=True)
+class TokenChunk:
+    """A piece of the answer, emitted as the LLM produces it."""
+
+    text: str
 
 
 def _build_citations(state: GraphState) -> list[Citation]:
@@ -157,6 +166,7 @@ class ServiceContainer:
             "timings": [],
             "degraded_services": [],
             "errors": [],
+            "token_sink": None,
         }
 
     async def query(self, request: QueryRequest) -> QueryResponse:
@@ -165,42 +175,84 @@ class ServiceContainer:
         return self._build_response(result)
 
     async def query_stages(self, request: QueryRequest):  # type: ignore[no-untyped-def]
-        """Yield each pipeline stage name as it completes, plus two early
-        payloads so the client isn't blocked on the slow provider calls:
-        EvidencePreview once retrieval has settled (while the LLM works) and
-        AnswerPreview once groundedness passes (while TTS runs). The final
-        QueryResponse comes last."""
+        """Yield everything the client can act on the moment it exists:
+        stage names as they complete, EvidencePreview once retrieval settles
+        (while the LLM works), TokenChunks as the LLM writes them, and the
+        final QueryResponse last.
+
+        The graph runs as a task feeding a queue rather than being driven by
+        this generator, so tokens produced *inside* the generate node can be
+        forwarded without waiting for that node to return.
+        """
+        queue: asyncio.Queue[Any] = asyncio.Queue()
+        done = object()
+
+        # Set when the first token is queued, not when the consumer reads it —
+        # otherwise the groundedness check could race ahead and also emit an
+        # AnswerPreview, duplicating the answer.
+        streamed = {"tokens": False}
+
+        async def sink(piece: str) -> None:
+            streamed["tokens"] = True
+            await queue.put(TokenChunk(text=piece))
+
         initial = self._build_initial_state(request)
-        last_state: GraphState = initial
-        evidence_sent = False
-        answer_sent = False
-        async for update in self.graph.astream(initial, stream_mode="updates"):
-            for partial in update.values():
-                last_state = {**last_state, **partial}
-                if not partial.get("timings"):
-                    continue
-                stage = partial["timings"][-1]["stage"]
-                yield stage
+        initial["token_sink"] = sink
 
-                if not evidence_sent and stage in {"confidence_gate", "refuse"}:
-                    evidence_sent = True
-                    timings = [StageTiming(**item) for item in last_state["timings"]]
-                    yield EvidencePreview(
-                        transcript=last_state["transcript"],
-                        confidence=last_state["confidence"],
-                        refused=last_state["refused"],
-                        citations=_build_citations(last_state),
-                        timings=timings,
-                        pipeline_duration_ms=round(sum(item.duration_ms for item in timings), 3),
-                    )
+        async def run() -> None:
+            last_state: GraphState = initial
+            evidence_sent = False
+            answer_sent = False
+            try:
+                async for update in self.graph.astream(initial, stream_mode="updates"):
+                    for partial in update.values():
+                        last_state = {**last_state, **partial}
+                        if not partial.get("timings"):
+                            continue
+                        stage = partial["timings"][-1]["stage"]
+                        await queue.put(stage)
 
-                # The graph is driven by this loop, so yielding here means the
-                # answer reaches the browser before the tts node even starts.
-                if not answer_sent and stage in {"groundedness_check", "refuse"}:
-                    if last_state["answer"]:
-                        answer_sent = True
-                        yield AnswerPreview(answer=last_state["answer"])
-        yield self._build_response(last_state)
+                        if not evidence_sent and stage in {"confidence_gate", "refuse"}:
+                            evidence_sent = True
+                            timings = [StageTiming(**item) for item in last_state["timings"]]
+                            await queue.put(
+                                EvidencePreview(
+                                    transcript=last_state["transcript"],
+                                    confidence=last_state["confidence"],
+                                    refused=last_state["refused"],
+                                    citations=_build_citations(last_state),
+                                    timings=timings,
+                                    pipeline_duration_ms=round(
+                                        sum(item.duration_ms for item in timings), 3
+                                    ),
+                                )
+                            )
+
+                        # Covers the paths that never stream: a refusal, or a
+                        # provider without streaming support.
+                        if not answer_sent and stage in {"groundedness_check", "refuse"}:
+                            answer_sent = True
+                            if last_state["answer"] and not streamed["tokens"]:
+                                await queue.put(AnswerPreview(answer=last_state["answer"]))
+                await queue.put(self._build_response(last_state))
+            except Exception as exc:  # surfaced to the caller below
+                await queue.put(exc)
+            finally:
+                await queue.put(done)
+
+        task = asyncio.create_task(run())
+        try:
+            while True:
+                item = await queue.get()
+                if item is done:
+                    break
+                if isinstance(item, Exception):
+                    raise item
+                yield item
+        finally:
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
 
     def _build_response(self, result: GraphState) -> QueryResponse:
         citations = _build_citations(result)

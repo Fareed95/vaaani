@@ -159,9 +159,7 @@ class PipelineNodes:
                     self.store.corpus(language=language, limit=2500),
                 )
                 self.sparse.warm(language, corpus)
-            sparse_hits = self.sparse.rank(
-                current["rewritten_query"], limit=50, cache_key=language
-            )
+            sparse_hits = self.sparse.rank(current["rewritten_query"], limit=50, cache_key=language)
             current["candidates"] = reciprocal_rank_fusion([dense_hits, sparse_hits], limit=10)
             return current
 
@@ -207,9 +205,21 @@ class PipelineNodes:
 
     async def generate_node(self, state: GraphState) -> GraphState:
         async def operation(current: GraphState) -> GraphState:
-            current["answer"] = await self.generator.generate(
-                current["rewritten_query"], current["reranked"], current["language"]
-            )
+            sink = current.get("token_sink")
+            if sink is None:
+                current["answer"] = await self.generator.generate(
+                    current["rewritten_query"], current["reranked"], current["language"]
+                )
+            else:
+                # Push each piece out as it arrives; the client renders the
+                # answer while the provider is still writing it.
+                pieces: list[str] = []
+                async for piece in self.generator.stream(
+                    current["rewritten_query"], current["reranked"], current["language"]
+                ):
+                    pieces.append(piece)
+                    await sink(piece)
+                current["answer"] = "".join(pieces).strip()
             if self.generator.degraded:
                 current["degraded_services"].append("llm_generation")
             return current

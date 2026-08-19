@@ -24,3 +24,6 @@ class GraphState(TypedDict):
     timings: list[dict[str, Any]]
     degraded_services: list[str]
     errors: list[str]
+    # Optional callback the generate node pushes tokens into, so the answer
+    # reaches the client as the LLM produces it instead of after it finishes.
+    token_sink: Any | None

@@ -5,9 +5,15 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from vaaani.api.schemas import QueryRequest, QueryResponse
-from vaaani.services import AnswerPreview, EvidencePreview
+from vaaani.services import AnswerPreview, EvidencePreview, TokenChunk
 
 router = APIRouter(tags=["query"])
+
+
+# Some proxies hold a streamed response until enough bytes accumulate, which
+# turns per-stage SSE frames into one burst at the end. A padded comment as the
+# first write pushes past that threshold and forces the connection open.
+_PREAMBLE = ":" + " " * 2048 + "\n\n"
 
 
 async def _token_frames(answer: str):  # type: ignore[no-untyped-def]
@@ -27,6 +33,8 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
 @router.post("/query/stream")
 async def query_stream(payload: QueryRequest, request: Request) -> StreamingResponse:
     async def events():  # type: ignore[no-untyped-def]
+        yield _PREAMBLE
+        yield f"event: open\ndata: {json.dumps({'ok': True})}\n\n"
         try:
             response: QueryResponse | None = None
             streamed_answer = False
@@ -47,9 +55,13 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
                         "pipeline_duration_ms": item.pipeline_duration_ms,
                     }
                     yield f"event: evidence\ndata: {json.dumps(evidence)}\n\n"
+                elif isinstance(item, TokenChunk):
+                    # Live from the LLM — no wait for the full completion.
+                    streamed_answer = True
+                    yield f"event: token\ndata: {json.dumps({'token': item.text})}\n\n"
                 elif isinstance(item, AnswerPreview):
-                    # Groundedness passed, tts hasn't started: the answer can be
-                    # read while the audio is still being synthesized.
+                    # Non-streaming path (refusal, or a provider without SSE
+                    # support): the answer still beats voice synthesis.
                     streamed_answer = True
                     async for frame in _token_frames(item.answer):
                         yield frame
@@ -76,5 +88,7 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
     return StreamingResponse(
         events(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # no-transform stops intermediaries from gzipping the stream, which
+        # would re-introduce buffering.
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )

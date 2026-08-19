@@ -6,7 +6,7 @@ from vaaani.api.schemas import QueryRequest, QueryResponse
 from vaaani.chunking.base import Document
 from vaaani.chunking.metadata_aware import MetadataAwareChunker
 from vaaani.config import Settings
-from vaaani.services import AnswerPreview, EvidencePreview, ServiceContainer
+from vaaani.services import AnswerPreview, EvidencePreview, ServiceContainer, TokenChunk
 
 
 @pytest.mark.asyncio
@@ -51,9 +51,7 @@ async def test_pipeline_returns_citations_guardrails_and_timings() -> None:
 
 @pytest.mark.asyncio
 async def test_low_confidence_refusal_is_specific() -> None:
-    settings = Settings(
-        qdrant_url=":memory:", enable_ml_models=False, confidence_threshold=0.9
-    )
+    settings = Settings(qdrant_url=":memory:", enable_ml_models=False, confidence_threshold=0.9)
     services = ServiceContainer.build(settings)
     await asyncio.wait_for(services.initialize(), timeout=5)
     response = await asyncio.wait_for(
@@ -144,12 +142,17 @@ async def test_stream_sends_evidence_before_generation_and_answer_before_tts() -
         events.append(item)
 
     evidence_at = next(i for i, item in enumerate(events) if isinstance(item, EvidencePreview))
-    answer_at = next(i for i, item in enumerate(events) if isinstance(item, AnswerPreview))
+    # The answer reaches the client either as live tokens or, when the provider
+    # can't stream, as one preview — both must beat voice synthesis.
+    answer_at = next(
+        i for i, item in enumerate(events) if isinstance(item, (TokenChunk, AnswerPreview))
+    )
     generate_at = events.index("generate")
     tts_at = events.index("tts")
 
     assert evidence_at < generate_at, "evidence must reach the client before the LLM call"
     assert answer_at < tts_at, "answer must reach the client before voice synthesis"
     assert events[evidence_at].citations[0].passage_id == "gateway"
-    assert events[answer_at].answer
+    answer_item = events[answer_at]
+    assert answer_item.text if isinstance(answer_item, TokenChunk) else answer_item.answer
     assert isinstance(events[-1], QueryResponse)

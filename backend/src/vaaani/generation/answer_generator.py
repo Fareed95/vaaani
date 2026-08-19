@@ -1,4 +1,6 @@
+import json
 import re
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -29,11 +31,9 @@ class AnswerGenerator:
         chosen.sort(key=lambda item: item[2])
         return " ".join(f"{sentence} [{rank}]" for _, sentence, rank in chosen if sentence)
 
-    async def generate(self, query: str, hits: list[SearchHit], language: str) -> str:
-        if not self.api_key:
-            return self._extractive_answer(query, hits)
+    def _messages(self, query: str, hits: list[SearchHit], language: str) -> list[dict[str, str]]:
         context = "\n\n".join(f"[{rank}] {hit.text}" for rank, hit in enumerate(hits[:5], start=1))
-        messages = [
+        return [
             {
                 "role": "system",
                 "content": (
@@ -47,15 +47,71 @@ class AnswerGenerator:
                 "content": f"Language: {language}\nQuestion: {query}\nEvidence:\n{context}",
             },
         ]
+
+    async def generate(self, query: str, hits: list[SearchHit], language: str) -> str:
+        if not self.api_key:
+            return self._extractive_answer(query, hits)
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
                     headers={"Authorization": f"Bearer {self.api_key}"},
-                    json={"model": self.model, "messages": messages, "temperature": 0.1},
+                    json={
+                        "model": self.model,
+                        "messages": self._messages(query, hits, language),
+                        "temperature": 0.1,
+                    },
                 )
                 response.raise_for_status()
             return str(response.json()["choices"][0]["message"]["content"]).strip()
         except (httpx.HTTPError, KeyError, IndexError, TypeError):
             self.degraded = True
             return self._extractive_answer(query, hits)
+
+    async def stream(self, query: str, hits: list[SearchHit], language: str) -> AsyncIterator[str]:
+        """Yield answer text as the provider produces it. Falls back to the
+        extractive answer only if nothing has been emitted yet — a mid-stream
+        failure can't be undone on the client, so it ends the answer instead."""
+        if not self.api_key:
+            yield self._extractive_answer(query, hits)
+            return
+
+        emitted = False
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    json={
+                        "model": self.model,
+                        "messages": self._messages(query, hits, language),
+                        "temperature": 0.1,
+                        "stream": True,
+                    },
+                ) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        piece = _sse_delta(line)
+                        if piece:
+                            emitted = True
+                            yield piece
+        except (httpx.HTTPError, KeyError, IndexError, TypeError):
+            self.degraded = True
+            if not emitted:
+                yield self._extractive_answer(query, hits)
+
+
+def _sse_delta(line: str) -> str:
+    if not line.startswith("data:"):
+        return ""
+    payload = line[len("data:") :].strip()
+    if not payload or payload == "[DONE]":
+        return ""
+    try:
+        choices = json.loads(payload)["choices"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return ""
+    if not choices:
+        return ""
+    return str(choices[0].get("delta", {}).get("content") or "")
