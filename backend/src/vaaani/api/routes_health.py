@@ -13,7 +13,7 @@ async def health(request: Request) -> HealthResponse:
     count = await services.store.count()
     if settings.voice_provider == "elevenlabs":
         provider_name = "ElevenLabs"
-        voice_key_present = bool(settings.elevenlabs_api_key)
+        voice_key_present = bool(settings.elevenlabs_api_keys)
     else:
         provider_name = "Sarvam AI"
         voice_key_present = bool(settings.sarvam_api_key)

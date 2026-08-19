@@ -39,12 +39,12 @@ class ServiceContainer:
         )
         if settings.voice_provider == "elevenlabs":
             stt: SarvamSTT | ElevenLabsSTT = ElevenLabsSTT(
-                settings.elevenlabs_api_key,
+                settings.elevenlabs_api_keys,
                 settings.elevenlabs_base_url,
                 settings.elevenlabs_stt_model,
             )
             tts: SarvamTTS | ElevenLabsTTS = ElevenLabsTTS(
-                settings.elevenlabs_api_key,
+                settings.elevenlabs_api_keys,
                 settings.elevenlabs_base_url,
                 settings.elevenlabs_tts_model,
                 settings.elevenlabs_voice_id,
