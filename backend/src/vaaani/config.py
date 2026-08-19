@@ -33,11 +33,19 @@ class Settings(BaseSettings):
     dataset_split: str = "train"
     dataset_limit: int = 1000
 
+    voice_provider: Literal["sarvam", "elevenlabs"] = "sarvam"
+
     sarvam_api_key: str | None = None
     sarvam_base_url: str = "https://api.sarvam.ai"
     sarvam_stt_model: str = "saaras:v3"
     sarvam_tts_model: str = "bulbul:v3"
     sarvam_tts_speaker: str = "shubh"
+
+    elevenlabs_api_key: str | None = None
+    elevenlabs_base_url: str = "https://api.elevenlabs.io/v1"
+    elevenlabs_stt_model: str = "scribe_v1"
+    elevenlabs_tts_model: str = "eleven_multilingual_v2"
+    elevenlabs_voice_id: str = "pNInz6obpgDQGcFmaJgB"
 
     llm_api_key: str | None = None
     llm_base_url: str = "https://api.openai.com/v1"

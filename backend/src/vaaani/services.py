@@ -16,7 +16,9 @@ from vaaani.guardrails.topic_classifier import TopicClassifier
 from vaaani.retrieval.dense import DenseRetriever
 from vaaani.retrieval.reranker import CrossEncoderReranker
 from vaaani.retrieval.sparse_bm25 import SparseBM25Retriever
+from vaaani.stt.elevenlabs_stt import ElevenLabsSTT
 from vaaani.stt.sarvam_stt import SarvamSTT
+from vaaani.tts.elevenlabs_tts import ElevenLabsTTS
 from vaaani.tts.sarvam_tts import SarvamTTS
 from vaaani.vectorstore.qdrant_client import QdrantVectorStore
 
@@ -35,16 +37,31 @@ class ServiceContainer:
         store = QdrantVectorStore(
             settings.qdrant_url, settings.qdrant_collection, settings.qdrant_api_key
         )
-        nodes = PipelineNodes(
-            stt=SarvamSTT(
+        if settings.voice_provider == "elevenlabs":
+            stt: SarvamSTT | ElevenLabsSTT = ElevenLabsSTT(
+                settings.elevenlabs_api_key,
+                settings.elevenlabs_base_url,
+                settings.elevenlabs_stt_model,
+            )
+            tts: SarvamTTS | ElevenLabsTTS = ElevenLabsTTS(
+                settings.elevenlabs_api_key,
+                settings.elevenlabs_base_url,
+                settings.elevenlabs_tts_model,
+                settings.elevenlabs_voice_id,
+            )
+        else:
+            stt = SarvamSTT(
                 settings.sarvam_api_key, settings.sarvam_base_url, settings.sarvam_stt_model
-            ),
-            tts=SarvamTTS(
+            )
+            tts = SarvamTTS(
                 settings.sarvam_api_key,
                 settings.sarvam_base_url,
                 settings.sarvam_tts_model,
                 settings.sarvam_tts_speaker,
-            ),
+            )
+        nodes = PipelineNodes(
+            stt=stt,
+            tts=tts,
             topic=TopicClassifier(),
             dense=DenseRetriever(store, encoder),
             sparse=SparseBM25Retriever(),

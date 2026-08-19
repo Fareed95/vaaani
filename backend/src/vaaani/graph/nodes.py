@@ -12,7 +12,9 @@ from vaaani.retrieval.dense import DenseRetriever
 from vaaani.retrieval.fusion import reciprocal_rank_fusion
 from vaaani.retrieval.reranker import CrossEncoderReranker
 from vaaani.retrieval.sparse_bm25 import SparseBM25Retriever
+from vaaani.stt.elevenlabs_stt import ElevenLabsSTT
 from vaaani.stt.sarvam_stt import SarvamSTT
+from vaaani.tts.elevenlabs_tts import ElevenLabsTTS
 from vaaani.tts.sarvam_tts import SarvamTTS
 from vaaani.vectorstore.qdrant_client import QdrantVectorStore
 
@@ -20,8 +22,8 @@ from vaaani.vectorstore.qdrant_client import QdrantVectorStore
 class PipelineNodes:
     def __init__(
         self,
-        stt: SarvamSTT,
-        tts: SarvamTTS,
+        stt: SarvamSTT | ElevenLabsSTT,
+        tts: SarvamTTS | ElevenLabsTTS,
         topic: TopicClassifier,
         dense: DenseRetriever,
         sparse: SparseBM25Retriever,
