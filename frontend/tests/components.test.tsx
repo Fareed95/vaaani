@@ -60,6 +60,22 @@ describe("Vaaani interface", () => {
     expect(panel.getByText("Generation")).toBeInTheDocument();
   });
 
+  it("falls back to metadata timings when the backend predates the evidence event", () => {
+    const { container } = render(
+      <LatencyDashboard
+        timings={[
+          { stage: "retrieve", started_at: "a", ended_at: "b", duration_ms: 20, status: "ok" },
+          { stage: "generate", started_at: "b", ended_at: "c", duration_ms: 8000, status: "ok" },
+          { stage: "tts", started_at: "c", ended_at: "d", duration_ms: 5700, status: "ok" },
+        ]}
+      />,
+    );
+    const panel = within(container);
+    expect(panel.getAllByText("20.0 ms").length).toBeGreaterThan(0);
+    expect(panel.queryByText("8000.0 ms")).not.toBeInTheDocument();
+    expect(panel.getByText(/under the 200ms target/)).toBeInTheDocument();
+  });
+
   it("waits for the server trace instead of guessing a number", () => {
     const { container } = render(<LatencyDashboard timings={[]} running liveStages={["retrieve"]} />);
     const panel = within(container);

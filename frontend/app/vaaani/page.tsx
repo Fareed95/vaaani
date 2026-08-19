@@ -254,7 +254,7 @@ export default function VaaaniPage() {
               }
             />
             <LatencyDashboard
-              timings={evidence?.timings ?? []}
+              timings={evidence?.timings ?? metadata?.timings ?? []}
               pipelineDuration={evidence?.pipeline_duration_ms}
               liveStages={liveStages}
               running={loading}

@@ -18,6 +18,15 @@ const labels: Record<string, string> = {
 // Everything after the confidence gate waits on a provider round-trip, so it
 // is reported as progress only. The 200ms target covers the stages above it,
 // and that score is final the moment the evidence arrives.
+const PIPELINE_STAGES = [
+  "stt",
+  "query_classify",
+  "query_rewrite",
+  "retrieve",
+  "rerank",
+  "confidence_gate",
+  "refuse",
+];
 const AFTER_PIPELINE = ["generate", "groundedness_check", "tts", "response"] as const;
 const PIPELINE_TARGET_MS = 200;
 
@@ -32,7 +41,12 @@ export function LatencyDashboard({
   liveStages?: string[];
   running?: boolean;
 }) {
-  if (!timings.length) {
+  // `timings` may be the early evidence payload (pipeline stages only) or the
+  // final metadata (every stage) if the backend predates the evidence event —
+  // filter either way so the score means the same thing.
+  const rows = timings.filter((timing) => PIPELINE_STAGES.includes(timing.stage));
+
+  if (!rows.length) {
     return (
       <aside className="latency-panel empty-panel">
         <Gauge size={18} />
@@ -41,8 +55,8 @@ export function LatencyDashboard({
     );
   }
 
-  const max = Math.max(...timings.map((timing) => timing.duration_ms), 1);
-  const total = pipelineDuration ?? timings.reduce((sum, timing) => sum + timing.duration_ms, 0);
+  const max = Math.max(...rows.map((timing) => timing.duration_ms), 1);
+  const total = pipelineDuration ?? rows.reduce((sum, timing) => sum + timing.duration_ms, 0);
   const underTarget = total <= PIPELINE_TARGET_MS;
 
   return (
@@ -58,7 +72,7 @@ export function LatencyDashboard({
         </span>
       </div>
       <div className="timing-list">
-        {timings.map((timing) => (
+        {rows.map((timing) => (
           <div className="timing-row" key={`${timing.stage}-${timing.started_at}`}>
             <div><span>{labels[timing.stage] ?? timing.stage}</span><b>{timing.duration_ms.toFixed(1)} ms</b></div>
             <div className="timing-track"><i style={{ width: `${Math.max(2, timing.duration_ms / max * 100)}%` }} data-status={timing.status} /></div>
