@@ -21,7 +21,13 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
 async def query_stream(payload: QueryRequest, request: Request) -> StreamingResponse:
     async def events():  # type: ignore[no-untyped-def]
         try:
-            response = await request.app.state.services.query(payload)
+            response: QueryResponse | None = None
+            async for item in request.app.state.services.query_stages(payload):
+                if isinstance(item, QueryResponse):
+                    response = item
+                else:
+                    yield f"event: stage\ndata: {json.dumps({'stage': item})}\n\n"
+            assert response is not None
             metadata = response.model_dump(mode="json", exclude={"answer", "audio_base64"})
             yield f"event: metadata\ndata: {json.dumps(metadata)}\n\n"
             for token in response.answer.split():

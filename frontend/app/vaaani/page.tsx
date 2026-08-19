@@ -19,6 +19,20 @@ import {
   type QueryMetadata,
 } from "@/lib/api-client";
 
+const STAGE_LABELS: Record<string, string> = {
+  stt: "Transcribing your voice…",
+  classify: "Checking the question is safe to search…",
+  rewrite: "Reading conversation context…",
+  retrieve: "Searching multilingual evidence…",
+  rerank: "Ranking the best sources…",
+  confidence_gate: "Checking retrieval confidence…",
+  generate: "Writing a grounded answer…",
+  groundedness: "Verifying the answer against evidence…",
+  refuse: "Answer withheld — evidence wasn't strong enough…",
+  tts: "Synthesizing voice response…",
+  response: "Finishing up…",
+};
+
 export default function VaaaniPage() {
   const shellRef = useRef<HTMLElement | null>(null);
   const [language, setLanguage] = useState<LanguageCode>("en-IN");
@@ -27,6 +41,7 @@ export default function VaaaniPage() {
   const [metadata, setMetadata] = useState<QueryMetadata>();
   const [audioUrl, setAudioUrl] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const [stageLabel, setStageLabel] = useState<string>();
   const [error, setError] = useState<string>();
   const [conversation, setConversation] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
@@ -50,15 +65,18 @@ export default function VaaaniPage() {
     setAnswer("");
     setMetadata(undefined);
     setAudioUrl(undefined);
+    setStageLabel(payload.audio_base64 ? STAGE_LABELS.stt : "Starting…");
     let streamedAnswer = "";
     let transcript = payload.query ?? "";
     try {
       await streamQuery(
         { ...payload, language, conversation },
         {
+          onStage: (stage) => setStageLabel(STAGE_LABELS[stage] ?? stage),
           onMetadata: (value) => {
             transcript = value.transcript;
             setMetadata(value);
+            setStageLabel(undefined);
           },
           onToken: (token) => {
             streamedAnswer += token;
@@ -77,6 +95,7 @@ export default function VaaaniPage() {
       setError(cause instanceof Error ? cause.message : "The request could not be completed.");
     } finally {
       setLoading(false);
+      setStageLabel(undefined);
     }
   }
 
@@ -199,6 +218,12 @@ export default function VaaaniPage() {
             <div className="answer-empty">
               <span>Nothing asked yet</span>
               <p>Your answer will appear here with citation controls and optional audio playback.</p>
+            </div>
+          ) : null}
+          {loading && stageLabel && !answer ? (
+            <div className="answer-empty" role="status" aria-live="polite">
+              <span>Working on it</span>
+              <p>{stageLabel}</p>
             </div>
           ) : null}
           <AnswerCard answer={answer} loading={loading} citations={metadata?.citations ?? []} audioUrl={audioUrl} />

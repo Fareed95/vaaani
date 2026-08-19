@@ -89,7 +89,7 @@ class ServiceContainer:
         if not await self.store.exists():
             await self.store.ensure_collection(self.encoder.dimension)
 
-    async def query(self, request: QueryRequest) -> QueryResponse:
+    def _build_initial_state(self, request: QueryRequest) -> GraphState:
         audio: bytes | None = None
         if request.audio_base64:
             try:
@@ -99,7 +99,7 @@ class ServiceContainer:
             if len(audio) > 20 * 1024 * 1024:
                 raise ValueError("audio exceeds the 20MB request limit")
 
-        initial: GraphState = {
+        return {
             "request_id": str(uuid.uuid4()),
             "query": request.query or "",
             "language": request.language,
@@ -121,7 +121,26 @@ class ServiceContainer:
             "degraded_services": [],
             "errors": [],
         }
+
+    async def query(self, request: QueryRequest) -> QueryResponse:
+        initial = self._build_initial_state(request)
         result: GraphState = await self.graph.ainvoke(initial)
+        return self._build_response(result)
+
+    async def query_stages(self, request: QueryRequest):  # type: ignore[no-untyped-def]
+        """Yield the name of each pipeline stage as it completes (no answer
+        content — safe to stream before the groundedness check passes), then
+        the final QueryResponse once the graph finishes."""
+        initial = self._build_initial_state(request)
+        last_state: GraphState = initial
+        async for update in self.graph.astream(initial, stream_mode="updates"):
+            for partial in update.values():
+                last_state = {**last_state, **partial}
+                if partial.get("timings"):
+                    yield partial["timings"][-1]["stage"]
+        yield self._build_response(last_state)
+
+    def _build_response(self, result: GraphState) -> QueryResponse:
         citations = [
             Citation(
                 rank=rank,

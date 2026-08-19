@@ -8,12 +8,37 @@ interface VoiceRecorderProps {
   onRecording: (blob: Blob) => void | Promise<void>;
 }
 
+// The browser's own SpeechRecognition API gives instant interim captions
+// while the user talks, purely as visual feedback. It never touches the
+// server — the recorded audio blob is still sent to the real STT provider
+// for the transcript that actually drives the pipeline.
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: unknown) => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+function getSpeechRecognition(): (new () => SpeechRecognitionLike) | undefined {
+  if (typeof window === "undefined") return undefined;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
 export function VoiceRecorder({ disabled = false, onRecording }: VoiceRecorderProps) {
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string>();
+  const [liveCaption, setLiveCaption] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const captionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
     if (!recording) return;
@@ -40,6 +65,7 @@ export function VoiceRecorder({ disabled = false, onRecording }: VoiceRecorderPr
       };
       recorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
+        captionRef.current?.stop();
         setRecording(false);
         setSeconds(0);
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
@@ -48,7 +74,26 @@ export function VoiceRecorder({ disabled = false, onRecording }: VoiceRecorderPr
       recorderRef.current = recorder;
       recorder.start(250);
       setSeconds(0);
+      setLiveCaption("");
       setRecording(true);
+
+      const SpeechRecognitionCtor = getSpeechRecognition();
+      if (SpeechRecognitionCtor) {
+        const captioner = new SpeechRecognitionCtor();
+        captioner.continuous = true;
+        captioner.interimResults = true;
+        captioner.lang = "en-IN";
+        captioner.onresult = (event) => {
+          const results = (event as { results: ArrayLike<ArrayLike<{ transcript: string }>> }).results;
+          const text = Array.from(results)
+            .map((result) => result[0]?.transcript ?? "")
+            .join(" ");
+          setLiveCaption(text.trim());
+        };
+        captioner.onerror = () => captioner.stop();
+        captionRef.current = captioner;
+        captioner.start();
+      }
     } catch {
       setError("Microphone access is blocked. Allow it in your browser, or type your question below.");
     }
@@ -78,7 +123,7 @@ export function VoiceRecorder({ disabled = false, onRecording }: VoiceRecorderPr
       </button>
       <div className="record-caption" aria-live="polite">
         <strong>{recording ? `Listening · 0:${seconds.toString().padStart(2, "0")}` : "Tap to speak"}</strong>
-        <span>{recording ? "Tap when done" : "Voice or type below"}</span>
+        <span>{recording ? liveCaption || "Tap when done" : "Voice or type below"}</span>
       </div>
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>

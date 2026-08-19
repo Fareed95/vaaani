@@ -65,6 +65,7 @@ export interface HealthStatus {
 }
 
 interface StreamHandlers {
+  onStage?: (stage: string) => void;
   onMetadata?: (metadata: QueryMetadata) => void;
   onToken?: (token: string) => void;
   onAudio?: (base64: string, mimeType: string) => void;
@@ -170,6 +171,9 @@ function handleEvent(eventBlock: string, handlers: StreamHandlers): void {
   const data = JSON.parse(dataLines.join("\n")) as unknown;
 
   switch (event) {
+    case "stage":
+      handlers.onStage?.((data as { stage: string }).stage);
+      break;
     case "metadata":
       handlers.onMetadata?.(data as QueryMetadata);
       break;
