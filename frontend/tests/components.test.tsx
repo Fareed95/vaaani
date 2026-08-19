@@ -4,6 +4,7 @@ import { GuardrailBanner } from "@/components/GuardrailBanner";
 import { AnswerCard } from "@/components/AnswerCard";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { LatencyDashboard } from "@/components/LatencyDashboard";
+import { RetrievedChunks } from "@/components/RetrievedChunks";
 import { SampleQueryButtons } from "@/components/SampleQueryButtons";
 
 describe("Vaaani interface", () => {
@@ -83,5 +84,25 @@ describe("Vaaani interface", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Toggle source 1" }));
     expect(document.querySelector("#source-1")).toHaveAttribute("open");
+  });
+
+  it("shows retrieved chunks while the answer is still generating", () => {
+    const { container } = render(
+      <RetrievedChunks
+        running
+        chunks={[{
+          rank: 1,
+          passage_id: "p1",
+          text: "A corporation is a company authorized to act as a single entity.",
+          score: 0.87,
+          language: "en",
+          chunk_strategy: "metadata",
+        }]}
+      />,
+    );
+    const panel = within(container);
+    expect(panel.getByText(/single entity/)).toBeInTheDocument();
+    expect(panel.getByText("87%")).toBeInTheDocument();
+    expect(panel.getByText("1 ranked")).toBeInTheDocument();
   });
 });

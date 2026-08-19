@@ -745,7 +745,24 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, select:focus-visi
 .rail-heading span { font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; }
 .rail-heading small { color: var(--ink-soft); font-size: 11px; }
 
-.latency-panel { margin-top: 18px; }
+/* Retrieved chunks: first thing in the rail, since they arrive ~12ms in
+   while generation still has seconds to run. */
+.chunk-list { margin-top: 18px; }
+.chunk-list > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.chunk-list > header div { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+.chunk-list > header strong { color: var(--river); font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; }
+.chunk-list.is-waiting { display: flex; align-items: center; gap: 9px; color: var(--ink-soft); }
+.chunk-list.is-waiting header { margin: 0; gap: 8px; font-size: 12px; font-weight: 700; }
+.chunk-list.is-waiting p { margin: 0; font-size: 11px; }
+.chunk-list ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; max-height: 320px; overflow-y: auto; }
+.chunk-list li { padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: #fffaf0; }
+.chunk-list li > div { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.chunk-list li small { flex: 1; color: var(--ink-soft); font: 500 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .05em; }
+.chunk-list li b { color: var(--river); font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.chunk-list li p { margin: 0; color: var(--ink-soft); font-size: 11px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.chunk-rank { width: 19px; height: 19px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--coral); font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.latency-panel { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
 .latency-panel > header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .latency-panel > header div { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
 .latency-panel > header strong { color: var(--coral); font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }

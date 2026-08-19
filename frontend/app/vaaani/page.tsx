@@ -8,6 +8,7 @@ import { AnswerCard } from "@/components/AnswerCard";
 import { GuardrailBanner } from "@/components/GuardrailBanner";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { LatencyDashboard } from "@/components/LatencyDashboard";
+import { RetrievedChunks } from "@/components/RetrievedChunks";
 import { SampleQueryButtons } from "@/components/SampleQueryButtons";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
@@ -238,8 +239,9 @@ export default function VaaaniPage() {
           <aside className="evidence-rail">
             <div className="rail-heading">
               <span>Evidence</span>
-              <small>{citationsShown.length ? `${citationsShown.length} sources selected` : loading ? "Selecting sources…" : "Waiting for a question"}</small>
+              <small>{citationsShown.length ? `${citationsShown.length} chunks retrieved` : loading ? "Searching the index…" : "Waiting for a question"}</small>
             </div>
+            <RetrievedChunks chunks={citationsShown} running={loading} />
             <LatencyDashboard timings={metadata?.timings ?? []} liveStages={liveStages} running={loading} />
             {metadata?.degraded_services.length ? (
               <div className="degraded-note"><strong>Local fallbacks active</strong><span>{metadata.degraded_services.join(" · ").replaceAll("_", " ")}</span></div>
