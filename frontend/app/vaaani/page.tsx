@@ -7,7 +7,7 @@ import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { AnswerCard } from "@/components/AnswerCard";
 import { GuardrailBanner } from "@/components/GuardrailBanner";
 import { LanguageSelector } from "@/components/LanguageSelector";
-import { LatencyDashboard } from "@/components/LatencyDashboard";
+import { LatencyDashboard, type LiveStage } from "@/components/LatencyDashboard";
 import { SampleQueryButtons } from "@/components/SampleQueryButtons";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
@@ -21,16 +21,31 @@ import {
 
 const STAGE_LABELS: Record<string, string> = {
   stt: "Transcribing your voice…",
-  classify: "Checking the question is safe to search…",
-  rewrite: "Reading conversation context…",
+  query_classify: "Checking the question is safe to search…",
+  query_rewrite: "Reading conversation context…",
   retrieve: "Searching multilingual evidence…",
   rerank: "Ranking the best sources…",
   confidence_gate: "Checking retrieval confidence…",
   generate: "Writing a grounded answer…",
-  groundedness: "Verifying the answer against evidence…",
+  groundedness_check: "Verifying the answer against evidence…",
   refuse: "Answer withheld — evidence wasn't strong enough…",
   tts: "Synthesizing voice response…",
   response: "Finishing up…",
+};
+
+// The backend emits a stage name once that stage has *finished*, so the
+// status line should announce whatever runs next.
+const NEXT_STAGE: Record<string, string> = {
+  stt: "query_classify",
+  query_classify: "query_rewrite",
+  query_rewrite: "retrieve",
+  retrieve: "rerank",
+  rerank: "confidence_gate",
+  confidence_gate: "generate",
+  generate: "groundedness_check",
+  groundedness_check: "tts",
+  refuse: "response",
+  tts: "response",
 };
 
 export default function VaaaniPage() {
@@ -42,6 +57,8 @@ export default function VaaaniPage() {
   const [audioUrl, setAudioUrl] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [stageLabel, setStageLabel] = useState<string>();
+  const [liveStages, setLiveStages] = useState<LiveStage[]>([]);
+  const stageMarkRef = useRef(0);
   const [error, setError] = useState<string>();
   const [conversation, setConversation] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
@@ -66,13 +83,22 @@ export default function VaaaniPage() {
     setMetadata(undefined);
     setAudioUrl(undefined);
     setStageLabel(payload.audio_base64 ? STAGE_LABELS.stt : "Starting…");
+    setLiveStages([]);
+    stageMarkRef.current = performance.now();
     let streamedAnswer = "";
     let transcript = payload.query ?? "";
     try {
       await streamQuery(
         { ...payload, language, conversation },
         {
-          onStage: (stage) => setStageLabel(STAGE_LABELS[stage] ?? stage),
+          onStage: (stage) => {
+            const now = performance.now();
+            const elapsed = now - stageMarkRef.current;
+            stageMarkRef.current = now;
+            setLiveStages((current) => [...current, { stage, duration_ms: elapsed }]);
+            const next = NEXT_STAGE[stage];
+            setStageLabel(next ? STAGE_LABELS[next] : STAGE_LABELS[stage] ?? stage);
+          },
           onMetadata: (value) => {
             transcript = value.transcript;
             setMetadata(value);
@@ -206,7 +232,7 @@ export default function VaaaniPage() {
               <span>Evidence</span>
               <small>{metadata ? `${metadata.citations.length} sources selected` : "Waiting for a question"}</small>
             </div>
-            <LatencyDashboard timings={metadata?.timings ?? []} total={metadata?.total_duration_ms ?? 0} />
+            <LatencyDashboard timings={metadata?.timings ?? []} liveStages={liveStages} running={loading} />
             {metadata?.degraded_services.length ? (
               <div className="degraded-note"><strong>Local fallbacks active</strong><span>{metadata.degraded_services.join(" · ").replaceAll("_", " ")}</span></div>
             ) : null}

@@ -39,10 +39,9 @@ describe("Vaaani interface", () => {
     expect(screen.getByText(/Confidence 31% · required 55%/)).toBeInTheDocument();
   });
 
-  it("labels generation separately from retrieval", () => {
+  it("times pipeline stages and leaves provider stages untimed", () => {
     render(
       <LatencyDashboard
-        total={130}
         timings={[
           { stage: "retrieve", started_at: "a", ended_at: "b", duration_ms: 20, status: "ok" },
           { stage: "generate", started_at: "b", ended_at: "c", duration_ms: 110, status: "ok" },
@@ -51,6 +50,24 @@ describe("Vaaani interface", () => {
     );
     expect(screen.getByText("Hybrid retrieval")).toBeInTheDocument();
     expect(screen.getByText("Generation")).toBeInTheDocument();
+    expect(screen.getAllByText("20.0 ms").length).toBeGreaterThan(0);
+    expect(screen.queryByText("110.0 ms")).not.toBeInTheDocument();
+  });
+
+  it("shows provider stages as in-flight once the pipeline has settled", () => {
+    render(
+      <LatencyDashboard
+        timings={[]}
+        running
+        liveStages={[
+          { stage: "retrieve", duration_ms: 34.7 },
+          { stage: "confidence_gate", duration_ms: 1.2 },
+        ]}
+      />,
+    );
+    expect(screen.getByText("34.7 ms")).toBeInTheDocument();
+    expect(screen.getByText(/under the 200ms target/)).toBeInTheDocument();
+    expect(screen.getAllByText("working")).toHaveLength(2);
   });
 
   it("opens cited evidence from an inline reference", () => {
