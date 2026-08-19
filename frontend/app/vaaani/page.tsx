@@ -251,11 +251,16 @@ export default function VaaaniPage() {
 
       <footer>
         <span>Vaaani</span>
-        <span>
-          Developed by{" "}
-          <a href="https://github.com/Fareed95" target="_blank" rel="noopener noreferrer">Fareed95</a>
-          {" & "}
-          <a href="https://github.com/arshhimself" target="_blank" rel="noopener noreferrer">arshhimself</a>
+        <span className="dev-credits">
+          Developed by
+          <a href="https://github.com/Fareed95" target="_blank" rel="noopener noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element -- GitHub-hosted avatar, not a local/optimizable asset */}
+            <img src="https://github.com/Fareed95.png" alt="" width={18} height={18} /> Fareed95
+          </a>
+          <a href="https://github.com/arshhimself" target="_blank" rel="noopener noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element -- GitHub-hosted avatar, not a local/optimizable asset */}
+            <img src="https://github.com/arshhimself.png" alt="" width={18} height={18} /> arshhimself
+          </a>
         </span>
       </footer>
     </main>

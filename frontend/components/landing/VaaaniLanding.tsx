@@ -247,11 +247,14 @@ export function VaaaniLanding() {
 
       <footer className={styles.landingFooter}>
         <span>Vaaani</span>
-        <span>
-          Developed by{" "}
-          <a href="https://github.com/Fareed95" target="_blank" rel="noopener noreferrer">Fareed95</a>
-          {" & "}
-          <a href="https://github.com/arshhimself" target="_blank" rel="noopener noreferrer">arshhimself</a>
+        <span className={styles.devCredits}>
+          Developed by
+          <a href="https://github.com/Fareed95" target="_blank" rel="noopener noreferrer">
+            <img src="https://github.com/Fareed95.png" alt="" width={18} height={18} /> Fareed95
+          </a>
+          <a href="https://github.com/arshhimself" target="_blank" rel="noopener noreferrer">
+            <img src="https://github.com/arshhimself.png" alt="" width={18} height={18} /> arshhimself
+          </a>
         </span>
       </footer>
     </div>

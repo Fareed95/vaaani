@@ -487,6 +487,23 @@
   text-underline-offset: 3px;
 }
 
+.devCredits {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.devCredits a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.devCredits img {
+  border-radius: 50%;
+  display: block;
+}
+
 .landingFooter a:hover {
   color: var(--gold);
 }

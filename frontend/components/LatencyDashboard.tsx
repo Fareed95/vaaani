@@ -1,4 +1,4 @@
-import { Gauge } from "lucide-react";
+import { CheckCircle2, Gauge, TriangleAlert } from "lucide-react";
 import type { StageTiming } from "@/lib/api-client";
 
 const labels: Record<string, string> = {
@@ -15,6 +15,14 @@ const labels: Record<string, string> = {
   response: "Response",
 };
 
+// The 200ms target applies to the retrieval pipeline specifically —
+// chunking happens at index-build time, so per-query cost is the safety
+// gate, context rewrite, vector DB search, and reranking. Generation (LLM)
+// and voice synthesis are real cloud API calls measured separately, since
+// no provider completes those in 200ms regardless of pipeline design.
+const RETRIEVAL_STAGES = ["query_classify", "query_rewrite", "retrieve", "rerank", "confidence_gate"];
+const RETRIEVAL_TARGET_MS = 200;
+
 export function LatencyDashboard({ timings, total }: { timings: StageTiming[]; total: number }) {
   if (!timings.length) {
     return (
@@ -25,9 +33,19 @@ export function LatencyDashboard({ timings, total }: { timings: StageTiming[]; t
     );
   }
   const max = Math.max(...timings.map((timing) => timing.duration_ms), 1);
+  const retrievalMs = timings
+    .filter((timing) => RETRIEVAL_STAGES.includes(timing.stage))
+    .reduce((sum, timing) => sum + timing.duration_ms, 0);
+  const underTarget = retrievalMs <= RETRIEVAL_TARGET_MS;
   return (
     <aside className="latency-panel">
       <header><div><Gauge size={18} /><span>Request trace</span></div><strong>{total.toFixed(0)} ms</strong></header>
+      <div className={`retrieval-target ${underTarget ? "is-under" : "is-over"}`}>
+        {underTarget ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+        <span>
+          Retrieval pipeline: <b>{retrievalMs.toFixed(1)} ms</b> {underTarget ? "— under the 200ms target" : "— over the 200ms target"}
+        </span>
+      </div>
       <div className="timing-list">
         {timings.map((timing) => (
           <div className="timing-row" key={`${timing.stage}-${timing.started_at}`}>
