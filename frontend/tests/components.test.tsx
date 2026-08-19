@@ -18,7 +18,7 @@ describe("Vaaani interface", () => {
   it("fills a sample query without submitting implicitly", () => {
     const onSelect = vi.fn();
     render(<SampleQueryButtons onSelect={onSelect} />);
-    fireEvent.click(screen.getByText(/monsoon rainfall/i));
+    fireEvent.click(screen.getByText(/corporation/i));
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
