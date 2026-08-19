@@ -24,6 +24,39 @@ from vaaani.vectorstore.qdrant_client import QdrantVectorStore
 
 
 @dataclass(slots=True)
+class EvidencePreview:
+    """Retrieval result, streamed before generation starts."""
+
+    transcript: str
+    confidence: float
+    refused: bool
+    citations: list[Citation]
+
+
+@dataclass(slots=True)
+class AnswerPreview:
+    """Verified answer text, streamed before voice synthesis starts."""
+
+    answer: str
+
+
+def _build_citations(state: GraphState) -> list[Citation]:
+    return [
+        Citation(
+            rank=rank,
+            passage_id=hit.passage_id,
+            text=hit.text,
+            score=hit.score,
+            language=hit.language,
+            source_lang=hit.source_lang,
+            target_lang=hit.target_lang,
+            chunk_strategy=hit.strategy,
+        )
+        for rank, hit in enumerate(state["reranked"], start=1)
+    ]
+
+
+@dataclass(slots=True)
 class ServiceContainer:
     settings: Settings
     encoder: MultilingualEncoder
@@ -128,32 +161,42 @@ class ServiceContainer:
         return self._build_response(result)
 
     async def query_stages(self, request: QueryRequest):  # type: ignore[no-untyped-def]
-        """Yield the name of each pipeline stage as it completes (no answer
-        content — safe to stream before the groundedness check passes), then
-        the final QueryResponse once the graph finishes."""
+        """Yield each pipeline stage name as it completes, plus two early
+        payloads so the client isn't blocked on the slow provider calls:
+        EvidencePreview once retrieval has settled (while the LLM works) and
+        AnswerPreview once groundedness passes (while TTS runs). The final
+        QueryResponse comes last."""
         initial = self._build_initial_state(request)
         last_state: GraphState = initial
+        evidence_sent = False
+        answer_sent = False
         async for update in self.graph.astream(initial, stream_mode="updates"):
             for partial in update.values():
                 last_state = {**last_state, **partial}
-                if partial.get("timings"):
-                    yield partial["timings"][-1]["stage"]
+                if not partial.get("timings"):
+                    continue
+                stage = partial["timings"][-1]["stage"]
+                yield stage
+
+                if not evidence_sent and stage in {"confidence_gate", "refuse"}:
+                    evidence_sent = True
+                    yield EvidencePreview(
+                        transcript=last_state["transcript"],
+                        confidence=last_state["confidence"],
+                        refused=last_state["refused"],
+                        citations=_build_citations(last_state),
+                    )
+
+                # The graph is driven by this loop, so yielding here means the
+                # answer reaches the browser before the tts node even starts.
+                if not answer_sent and stage in {"groundedness_check", "refuse"}:
+                    if last_state["answer"]:
+                        answer_sent = True
+                        yield AnswerPreview(answer=last_state["answer"])
         yield self._build_response(last_state)
 
     def _build_response(self, result: GraphState) -> QueryResponse:
-        citations = [
-            Citation(
-                rank=rank,
-                passage_id=hit.passage_id,
-                text=hit.text,
-                score=hit.score,
-                language=hit.language,
-                source_lang=hit.source_lang,
-                target_lang=hit.target_lang,
-                chunk_strategy=hit.strategy,
-            )
-            for rank, hit in enumerate(result["reranked"], start=1)
-        ]
+        citations = _build_citations(result)
         total = round(sum(float(item["duration_ms"]) for item in result["timings"]), 3)
         return QueryResponse(
             request_id=result["request_id"],

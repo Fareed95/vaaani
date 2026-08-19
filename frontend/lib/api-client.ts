@@ -32,6 +32,14 @@ export interface StageTiming {
   status: "ok" | "error" | "skipped";
 }
 
+/** Retrieval result, delivered while the LLM is still generating. */
+export interface EvidencePreview {
+  transcript: string;
+  confidence: number;
+  refused: boolean;
+  citations: Citation[];
+}
+
 export interface GuardrailDecision {
   guardrail: string;
   passed: boolean;
@@ -66,6 +74,7 @@ export interface HealthStatus {
 
 interface StreamHandlers {
   onStage?: (stage: string) => void;
+  onEvidence?: (evidence: EvidencePreview) => void;
   onMetadata?: (metadata: QueryMetadata) => void;
   onToken?: (token: string) => void;
   onAudio?: (base64: string, mimeType: string) => void;
@@ -173,6 +182,9 @@ function handleEvent(eventBlock: string, handlers: StreamHandlers): void {
   switch (event) {
     case "stage":
       handlers.onStage?.((data as { stage: string }).stage);
+      break;
+    case "evidence":
+      handlers.onEvidence?.(data as EvidencePreview);
       break;
     case "metadata":
       handlers.onMetadata?.(data as QueryMetadata);

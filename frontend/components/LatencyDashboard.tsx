@@ -24,11 +24,6 @@ const PIPELINE_TARGET_MS = 200;
 // Provider round-trips. Never timed in the trace — progress only.
 const DEFERRED_STAGES = ["generate", "tts"] as const;
 
-export interface LiveStage {
-  stage: string;
-  duration_ms: number;
-}
-
 export function LatencyDashboard({
   timings,
   liveStages = [],
@@ -36,25 +31,27 @@ export function LatencyDashboard({
 }: {
   timings: StageTiming[];
   total?: number;
-  liveStages?: LiveStage[];
+  liveStages?: string[];
   running?: boolean;
 }) {
-  // Server timings are authoritative; until they land, fall back to the
-  // client-side gaps between stage events so the trace is readable while
-  // generation and voice synthesis are still in flight.
+  // Only the server knows how long a stage actually took. Client-side gaps
+  // between stage events measure network and queueing too, so while the
+  // request is in flight the trace shows which stages have finished and no
+  // numbers at all — a wrong number that later corrects itself is worse than
+  // no number.
   const settled = timings.length > 0;
-  const rows: Array<{ stage: string; duration_ms: number; status: string; key: string }> = settled
+  const rows: Array<{ stage: string; duration_ms: number | null; status: string; key: string }> = settled
     ? timings.map((timing) => ({
         stage: timing.stage,
         duration_ms: timing.duration_ms,
         status: timing.status,
         key: `${timing.stage}-${timing.started_at}`,
       }))
-    : liveStages.map((item, index) => ({
-        stage: item.stage,
-        duration_ms: item.duration_ms,
+    : liveStages.map((stage, index) => ({
+        stage,
+        duration_ms: null,
         status: "ok",
-        key: `${item.stage}-${index}`,
+        key: `${stage}-${index}`,
       }));
 
   const pipelineRows = rows.filter((row) => !isDeferred(row.stage));
@@ -68,30 +65,39 @@ export function LatencyDashboard({
     );
   }
 
-  const max = Math.max(...pipelineRows.map((row) => row.duration_ms), 1);
-  const pipelineMs = pipelineRows.reduce((sum, row) => sum + row.duration_ms, 0);
-  const pipelineSettled = pipelineRows.some((row) => row.stage === "confidence_gate" || row.stage === "refuse");
-  const underTarget = pipelineMs <= PIPELINE_TARGET_MS;
+  const max = Math.max(...pipelineRows.map((row) => row.duration_ms ?? 0), 1);
+  const pipelineMs = settled
+    ? pipelineRows.reduce((sum, row) => sum + (row.duration_ms ?? 0), 0)
+    : null;
+  const underTarget = (pipelineMs ?? 0) <= PIPELINE_TARGET_MS;
 
   return (
     <aside className="latency-panel" data-live={!settled}>
       <header>
         <div><Gauge size={18} /><span>Pipeline trace</span></div>
-        <strong>{pipelineMs.toFixed(1)} ms</strong>
+        <strong>{pipelineMs === null ? "measuring…" : `${pipelineMs.toFixed(1)} ms`}</strong>
       </header>
-      {pipelineSettled ? (
+      {pipelineMs === null ? null : (
         <div className={`retrieval-target ${underTarget ? "is-under" : "is-over"}`}>
           {underTarget ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
           <span>
             Full pipeline: <b>{pipelineMs.toFixed(1)} ms</b> {underTarget ? "— under the 200ms target" : "— over the 200ms target"}
           </span>
         </div>
-      ) : null}
+      )}
       <div className="timing-list">
         {pipelineRows.map((row) => (
           <div className="timing-row" key={row.key}>
-            <div><span>{labels[row.stage] ?? row.stage}</span><b>{row.duration_ms.toFixed(1)} ms</b></div>
-            <div className="timing-track"><i style={{ width: `${Math.max(2, row.duration_ms / max * 100)}%` }} data-status={row.status} /></div>
+            <div>
+              <span>{labels[row.stage] ?? row.stage}</span>
+              {row.duration_ms === null ? <em className="stage-done">done</em> : <b>{row.duration_ms.toFixed(1)} ms</b>}
+            </div>
+            <div className="timing-track">
+              <i
+                style={{ width: row.duration_ms === null ? "100%" : `${Math.max(2, row.duration_ms / max * 100)}%` }}
+                data-status={row.status}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -113,7 +119,7 @@ export function LatencyDashboard({
       </div>
       <p>
         Generation and voice synthesis are provider round-trips and sit outside the pipeline budget, so they are not timed here.
-        {settled ? null : " Stage times are client-side estimates until the server trace arrives."}
+        {settled ? null : " Stage times arrive with the server trace once the request completes."}
       </p>
     </aside>
   );

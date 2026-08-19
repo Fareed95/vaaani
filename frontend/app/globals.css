@@ -761,6 +761,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, select:focus-visi
 .timing-row > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .timing-row span { color: var(--ink-soft); font-size: 10px; }
 .timing-row b { font: 600 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.timing-row .stage-done { color: var(--river); font: 600 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
 .timing-track { height: 3px; margin-top: 6px; background: var(--line); overflow: hidden; }
 .timing-track i { display: block; height: 100%; background: var(--river); transition: width .5s ease; }
 .timing-track i[data-status="error"] { background: var(--coral); }

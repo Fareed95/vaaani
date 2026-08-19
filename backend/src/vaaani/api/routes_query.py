@@ -5,8 +5,15 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from vaaani.api.schemas import QueryRequest, QueryResponse
+from vaaani.services import AnswerPreview, EvidencePreview
 
 router = APIRouter(tags=["query"])
+
+
+async def _token_frames(answer: str):  # type: ignore[no-untyped-def]
+    for token in answer.split():
+        yield f"event: token\ndata: {json.dumps({'token': token + ' '})}\n\n"
+        await asyncio.sleep(0.012)
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -22,17 +29,36 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
     async def events():  # type: ignore[no-untyped-def]
         try:
             response: QueryResponse | None = None
+            streamed_answer = False
             async for item in request.app.state.services.query_stages(payload):
                 if isinstance(item, QueryResponse):
                     response = item
+                elif isinstance(item, EvidencePreview):
+                    # Retrieval is done and generation hasn't started: send the
+                    # citations now so they can be read while the LLM works.
+                    evidence = {
+                        "transcript": item.transcript,
+                        "confidence": item.confidence,
+                        "refused": item.refused,
+                        "citations": [
+                            citation.model_dump(mode="json") for citation in item.citations
+                        ],
+                    }
+                    yield f"event: evidence\ndata: {json.dumps(evidence)}\n\n"
+                elif isinstance(item, AnswerPreview):
+                    # Groundedness passed, tts hasn't started: the answer can be
+                    # read while the audio is still being synthesized.
+                    streamed_answer = True
+                    async for frame in _token_frames(item.answer):
+                        yield frame
                 else:
                     yield f"event: stage\ndata: {json.dumps({'stage': item})}\n\n"
             assert response is not None
             metadata = response.model_dump(mode="json", exclude={"answer", "audio_base64"})
             yield f"event: metadata\ndata: {json.dumps(metadata)}\n\n"
-            for token in response.answer.split():
-                yield f"event: token\ndata: {json.dumps({'token': token + ' '})}\n\n"
-                await asyncio.sleep(0.012)
+            if not streamed_answer:
+                async for frame in _token_frames(response.answer):
+                    yield frame
             if response.audio_base64:
                 yield (
                     "event: audio\ndata: "

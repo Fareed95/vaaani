@@ -7,7 +7,7 @@ import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { AnswerCard } from "@/components/AnswerCard";
 import { GuardrailBanner } from "@/components/GuardrailBanner";
 import { LanguageSelector } from "@/components/LanguageSelector";
-import { LatencyDashboard, type LiveStage } from "@/components/LatencyDashboard";
+import { LatencyDashboard } from "@/components/LatencyDashboard";
 import { SampleQueryButtons } from "@/components/SampleQueryButtons";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TranscriptDisplay } from "@/components/TranscriptDisplay";
@@ -15,6 +15,7 @@ import { VoiceRecorder } from "@/components/VoiceRecorder";
 import {
   blobToBase64,
   streamQuery,
+  type EvidencePreview,
   type LanguageCode,
   type QueryMetadata,
 } from "@/lib/api-client";
@@ -54,11 +55,11 @@ export default function VaaaniPage() {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
   const [metadata, setMetadata] = useState<QueryMetadata>();
+  const [evidence, setEvidence] = useState<EvidencePreview>();
   const [audioUrl, setAudioUrl] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [stageLabel, setStageLabel] = useState<string>();
-  const [liveStages, setLiveStages] = useState<LiveStage[]>([]);
-  const stageMarkRef = useRef(0);
+  const [liveStages, setLiveStages] = useState<string[]>([]);
   const [error, setError] = useState<string>();
   const [conversation, setConversation] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
@@ -81,10 +82,10 @@ export default function VaaaniPage() {
     setError(undefined);
     setAnswer("");
     setMetadata(undefined);
+    setEvidence(undefined);
     setAudioUrl(undefined);
     setStageLabel(payload.audio_base64 ? STAGE_LABELS.stt : "Starting…");
     setLiveStages([]);
-    stageMarkRef.current = performance.now();
     let streamedAnswer = "";
     let transcript = payload.query ?? "";
     try {
@@ -92,12 +93,13 @@ export default function VaaaniPage() {
         { ...payload, language, conversation },
         {
           onStage: (stage) => {
-            const now = performance.now();
-            const elapsed = now - stageMarkRef.current;
-            stageMarkRef.current = now;
-            setLiveStages((current) => [...current, { stage, duration_ms: elapsed }]);
+            setLiveStages((current) => [...current, stage]);
             const next = NEXT_STAGE[stage];
             setStageLabel(next ? STAGE_LABELS[next] : STAGE_LABELS[stage] ?? stage);
+          },
+          onEvidence: (value) => {
+            transcript = value.transcript;
+            setEvidence(value);
           },
           onMetadata: (value) => {
             transcript = value.transcript;
@@ -136,6 +138,12 @@ export default function VaaaniPage() {
   async function useRecording(blob: Blob) {
     await ask({ audio_base64: await blobToBase64(blob), audio_mime_type: blob.type });
   }
+
+  // The evidence preview arrives while the LLM is still working, so the
+  // sources, transcript, and confidence can be read long before metadata.
+  const citationsShown = metadata?.citations ?? evidence?.citations ?? [];
+  const transcriptShown = metadata?.transcript ?? evidence?.transcript;
+  const confidenceShown = metadata?.confidence ?? evidence?.confidence;
 
   return (
     <main ref={shellRef} className="vaaani-experience">
@@ -230,7 +238,7 @@ export default function VaaaniPage() {
           <aside className="evidence-rail">
             <div className="rail-heading">
               <span>Evidence</span>
-              <small>{metadata ? `${metadata.citations.length} sources selected` : "Waiting for a question"}</small>
+              <small>{citationsShown.length ? `${citationsShown.length} sources selected` : loading ? "Selecting sources…" : "Waiting for a question"}</small>
             </div>
             <LatencyDashboard timings={metadata?.timings ?? []} liveStages={liveStages} running={loading} />
             {metadata?.degraded_services.length ? (
@@ -249,7 +257,7 @@ export default function VaaaniPage() {
               <span>Answer</span>
               <h2>Grounded response.</h2>
             </div>
-            <small>{metadata ? `${Math.round(metadata.confidence * 100)}% confidence` : "Ready"}</small>
+            <small>{confidenceShown === undefined ? "Ready" : `${Math.round(confidenceShown * 100)}% confidence`}</small>
           </header>
           {error && (
             <div className="request-error" role="alert">
@@ -257,7 +265,7 @@ export default function VaaaniPage() {
               <span>{error} Check that the API is running at the configured URL, then try again.</span>
             </div>
           )}
-          {metadata && <TranscriptDisplay transcript={metadata.transcript} />}
+          {transcriptShown && <TranscriptDisplay transcript={transcriptShown} />}
           {metadata && <GuardrailBanner refused={metadata.refused} reason={metadata.refusal_reason ?? undefined} guardrails={metadata.guardrails} />}
           {!answer && !loading && !error ? (
             <div className="answer-empty">
@@ -271,7 +279,7 @@ export default function VaaaniPage() {
               <p>{stageLabel}</p>
             </div>
           ) : null}
-          <AnswerCard answer={answer} loading={loading} citations={metadata?.citations ?? []} audioUrl={audioUrl} />
+          <AnswerCard answer={answer} loading={loading} citations={citationsShown} audioUrl={audioUrl} />
         </section>
       </section>
 

@@ -2,11 +2,11 @@ import asyncio
 
 import pytest
 
-from vaaani.api.schemas import QueryRequest
+from vaaani.api.schemas import QueryRequest, QueryResponse
 from vaaani.chunking.base import Document
 from vaaani.chunking.metadata_aware import MetadataAwareChunker
 from vaaani.config import Settings
-from vaaani.services import ServiceContainer
+from vaaani.services import AnswerPreview, EvidencePreview, ServiceContainer
 
 
 @pytest.mark.asyncio
@@ -111,3 +111,45 @@ async def test_groundedness_provider_failure_is_fail_closed_after_retries() -> N
     assert decision.details["error_type"] == "RuntimeError"
     timing = next(item for item in response.timings if item.stage == "groundedness_check")
     assert timing.status == "error"
+
+
+@pytest.mark.asyncio
+async def test_stream_sends_evidence_before_generation_and_answer_before_tts() -> None:
+    settings = Settings(
+        qdrant_url=":memory:",
+        enable_ml_models=False,
+        confidence_threshold=0.05,
+        sarvam_api_key=None,
+        llm_api_key=None,
+    )
+    services = ServiceContainer.build(settings)
+    await asyncio.wait_for(services.initialize(), timeout=5)
+    chunk = MetadataAwareChunker().chunk(
+        Document(
+            text="The Gateway of India is a monument in Mumbai overlooking the Arabian Sea.",
+            passage_id="gateway",
+            language="en",
+            source_lang="eng_Latn",
+            target_lang="eng_Latn",
+        )
+    )[0]
+    await asyncio.wait_for(
+        services.store.upsert([chunk], services.encoder.encode([chunk.text])), timeout=5
+    )
+
+    events = []
+    async for item in services.query_stages(
+        QueryRequest(query="Where is the Gateway of India?", language="en-IN")
+    ):
+        events.append(item)
+
+    evidence_at = next(i for i, item in enumerate(events) if isinstance(item, EvidencePreview))
+    answer_at = next(i for i, item in enumerate(events) if isinstance(item, AnswerPreview))
+    generate_at = events.index("generate")
+    tts_at = events.index("tts")
+
+    assert evidence_at < generate_at, "evidence must reach the client before the LLM call"
+    assert answer_at < tts_at, "answer must reach the client before voice synthesis"
+    assert events[evidence_at].citations[0].passage_id == "gateway"
+    assert events[answer_at].answer
+    assert isinstance(events[-1], QueryResponse)

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GuardrailBanner } from "@/components/GuardrailBanner";
 import { AnswerCard } from "@/components/AnswerCard";
@@ -54,20 +54,16 @@ describe("Vaaani interface", () => {
     expect(screen.queryByText("110.0 ms")).not.toBeInTheDocument();
   });
 
-  it("shows provider stages as in-flight once the pipeline has settled", () => {
-    render(
-      <LatencyDashboard
-        timings={[]}
-        running
-        liveStages={[
-          { stage: "retrieve", duration_ms: 34.7 },
-          { stage: "confidence_gate", duration_ms: 1.2 },
-        ]}
-      />,
+  it("reports stage progress without guessing timings while in flight", () => {
+    const { container } = render(
+      <LatencyDashboard timings={[]} running liveStages={["retrieve", "confidence_gate"]} />,
     );
-    expect(screen.getByText("34.7 ms")).toBeInTheDocument();
-    expect(screen.getByText(/under the 200ms target/)).toBeInTheDocument();
-    expect(screen.getAllByText("working")).toHaveLength(2);
+    const panel = within(container);
+    expect(panel.getByText("Hybrid retrieval")).toBeInTheDocument();
+    expect(panel.getByText("measuring…")).toBeInTheDocument();
+    expect(panel.queryByText(/ms/)).not.toBeInTheDocument();
+    expect(panel.queryByText(/200ms target/)).not.toBeInTheDocument();
+    expect(panel.getAllByText("working")).toHaveLength(2);
   });
 
   it("opens cited evidence from an inline reference", () => {
