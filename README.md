@@ -1,6 +1,8 @@
 # Vaaani
 
-Vaaani is a voice-first, multilingual retrieval-augmented answer system built for Indian languages. A spoken or typed question moves through Sarvam speech recognition, hybrid dense + BM25 retrieval, cross-encoder reranking, explicit guardrails, grounded generation, and Sarvam speech synthesis. Every response carries citations, confidence, guardrail decisions, and stage-level latency.
+Vaaani is a voice-first, multilingual retrieval-augmented answer system built for Indian languages. A spoken or typed question moves through speech recognition (Sarvam or ElevenLabs), hybrid dense + BM25 retrieval, cross-encoder reranking, explicit guardrails, grounded generation, and speech synthesis. Every response carries citations, confidence, guardrail decisions, and stage-level latency, streamed live as the pipeline runs.
+
+Built for **HH Goa 2026 — Task 2: Voice-Enabled RAG** by [Fareed95](https://github.com/Fareed95) and [arshhimself](https://github.com/arshhimself).
 
 ## Quickstart
 
@@ -25,7 +27,7 @@ voice/text → STT → topic gate → contextual rewrite → dense + BM25
            → grounded generation → entailment check → TTS → cited response
 ```
 
-The backend is a typed LangGraph state machine. Qdrant payload indexes keep language, passage ID, source/target language, and chunk strategy filterable. Heavy ML models are lazy-loaded; health and startup stay fast.
+The backend is a typed LangGraph state machine. Qdrant payload indexes keep language, passage ID, source/target language, and chunk strategy filterable. Heavy ML models are lazy-loaded; health and startup stay fast. `/query/stream` streams each pipeline stage's name live as it completes (safe — no answer content before the groundedness check passes), so the UI shows real progress instead of a blank wait.
 
 ## Commands
 
@@ -33,7 +35,7 @@ The backend is a typed LangGraph state machine. Qdrant payload indexes keep lang
 
 Full documentation lives in [`docs/`](docs/index.md) and is built with MkDocs Material.
 
-**Live application**: https://frontend-five-liard.vercel.app/vaaani
+**Live application**: https://vaaani.co.in/vaaani
 **Live API**: https://vaaani-api-production.up.railway.app
 
 ## Data and models
@@ -42,7 +44,7 @@ Full documentation lives in [`docs/`](docs/index.md) and is built with MkDocs Ma
 - Embeddings: `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` locally (`VAAANI_ENABLE_ML_MODELS=true`); the live deployment runs the feature-hash/lexical fallback (`VAAANI_ENABLE_ML_MODELS=false`) since the real models need ~1.7GB RAM, more than the free hosting tier's 1GB ceiling
 - Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` (same fallback note as above)
 - Groundedness: `cross-encoder/nli-deberta-v3-small` (same fallback note as above)
-- Speech: Sarvam AI STT and TTS (real in both local and deployed)
+- Speech: Sarvam AI or ElevenLabs — selectable via `VAAANI_VOICE_PROVIDER` (`sarvam` | `elevenlabs`). The live deployment runs ElevenLabs (Sarvam's free tier is a one-time, non-recurring credit that a development session exhausted; ElevenLabs' free tier renews monthly). Real speech recognition and synthesis in both local and deployed.
 
 See [decisions](docs/decisions.md) for offline fallbacks and assumptions. No secrets belong in source control.
 

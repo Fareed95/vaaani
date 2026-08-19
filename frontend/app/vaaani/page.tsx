@@ -144,6 +144,25 @@ export default function VaaaniPage() {
         </p>
       </section>
 
+      <section className="about-strip" aria-label="How Vaaani is built">
+        <article>
+          <span>Pipeline</span>
+          <strong>Voice → STT → hybrid retrieval → rerank → grounded generation → TTS</strong>
+        </article>
+        <article>
+          <span>Chunking</span>
+          <strong>Fixed-size, semantic, and metadata-aware — compared, not just one strategy</strong>
+        </article>
+        <article>
+          <span>Retrieval latency</span>
+          <strong>P50 ~60ms, P70 ~73ms — under the 200ms target, measured on 50 real queries</strong>
+        </article>
+        <article>
+          <span>Guardrails</span>
+          <strong>Off-topic gate, confidence threshold, groundedness check — refuses rather than guesses</strong>
+        </article>
+      </section>
+
       <section className="studio" id="compose">
         <div className="side-stack">
           <div className="compose-card">
@@ -232,7 +251,12 @@ export default function VaaaniPage() {
 
       <footer>
         <span>Vaaani</span>
-        <span>Grounded voice answers</span>
+        <span>
+          Developed by{" "}
+          <a href="https://github.com/Fareed95" target="_blank" rel="noopener noreferrer">Fareed95</a>
+          {" & "}
+          <a href="https://github.com/arshhimself" target="_blank" rel="noopener noreferrer">arshhimself</a>
+        </span>
       </footer>
     </main>
   );

@@ -244,6 +244,16 @@ export function VaaaniLanding() {
           Launch the console <ArrowRight size={18} />
         </Link>
       </section>
+
+      <footer className={styles.landingFooter}>
+        <span>Vaaani</span>
+        <span>
+          Developed by{" "}
+          <a href="https://github.com/Fareed95" target="_blank" rel="noopener noreferrer">Fareed95</a>
+          {" & "}
+          <a href="https://github.com/arshhimself" target="_blank" rel="noopener noreferrer">arshhimself</a>
+        </span>
+      </footer>
     </div>
   );
 }

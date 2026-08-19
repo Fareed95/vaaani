@@ -194,6 +194,47 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, select:focus-visi
   text-wrap: pretty;
 }
 
+.about-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 4px 0 clamp(20px, 3vw, 32px);
+}
+
+.about-strip article {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--paper-raised) 70%, transparent);
+}
+
+.about-strip span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--saffron);
+  font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.about-strip strong {
+  display: block;
+  color: var(--ink);
+  font: 500 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@media (max-width: 900px) {
+  .about-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .about-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
 .studio {
   display: grid;
   grid-template-columns: minmax(330px, 390px) minmax(0, 1fr) minmax(260px, 320px);
@@ -654,6 +695,8 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, select:focus-visi
 .rail-footnote strong { color: var(--ink); }
 
 footer { min-height: 76px; display: flex; align-items: center; justify-content: space-between; color: var(--ink-soft); font: 600 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; }
+footer a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+footer a:hover { color: var(--saffron); }
 .vaaani-experience footer {
   width: 100%;
 }
