@@ -19,7 +19,6 @@ const labels: Record<string, string> = {
 // is reported as progress only. The 200ms target covers the stages above it,
 // and that score is final the moment the evidence arrives.
 const PIPELINE_STAGES = [
-  "stt",
   "query_classify",
   "query_rewrite",
   "retrieve",
@@ -27,7 +26,9 @@ const PIPELINE_STAGES = [
   "confidence_gate",
   "refuse",
 ];
-const AFTER_PIPELINE = ["generate", "groundedness_check", "tts", "response"] as const;
+// Speech recognition is a provider round trip like generation and voice
+// synthesis — reported as progress, never charged to the pipeline budget.
+const AFTER_PIPELINE = ["stt", "generate", "groundedness_check", "tts", "response"] as const;
 const PIPELINE_TARGET_MS = 200;
 
 export function LatencyDashboard({

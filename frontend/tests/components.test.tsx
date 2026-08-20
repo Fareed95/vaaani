@@ -55,8 +55,10 @@ describe("Vaaani interface", () => {
     expect(panel.getByText("Hybrid retrieval")).toBeInTheDocument();
     expect(panel.getAllByText("20.0 ms").length).toBeGreaterThan(0);
     expect(panel.getByText(/under the 200ms target/)).toBeInTheDocument();
-    // Generation, evidence check, voice synthesis, response — progress only.
-    expect(panel.getAllByText("working")).toHaveLength(4);
+    // Speech recognition, generation, evidence check, voice synthesis,
+    // response — all provider-bound, progress only.
+    expect(panel.getAllByText("working")).toHaveLength(5);
+    expect(panel.getByText("Speech recognition")).toBeInTheDocument();
     expect(panel.getByText("Generation")).toBeInTheDocument();
   });
 

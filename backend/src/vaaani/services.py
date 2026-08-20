@@ -53,6 +53,11 @@ class TokenChunk:
     text: str
 
 
+# Speech recognition is a provider round trip, so it sits outside the pipeline
+# budget alongside generation and voice synthesis.
+PROVIDER_STAGES = frozenset({"stt", "generate", "tts"})
+
+
 def _build_citations(state: GraphState) -> list[Citation]:
     return [
         Citation(
@@ -223,7 +228,12 @@ class ServiceContainer:
                                     citations=_build_citations(last_state),
                                     timings=timings,
                                     pipeline_duration_ms=round(
-                                        sum(item.duration_ms for item in timings), 3
+                                        sum(
+                                            item.duration_ms
+                                            for item in timings
+                                            if item.stage not in PROVIDER_STAGES
+                                        ),
+                                        3,
                                     ),
                                 )
                             )
