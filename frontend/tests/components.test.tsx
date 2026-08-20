@@ -62,6 +62,24 @@ describe("Vaaani interface", () => {
     expect(panel.getByText("Generation")).toBeInTheDocument();
   });
 
+  it("ignores a server total that still counts provider stages", () => {
+    const { container } = render(
+      <LatencyDashboard
+        // Backend not yet redeployed: 498ms of speech recognition folded in.
+        pipelineDuration={528.6}
+        timings={[
+          { stage: "stt", started_at: "a", ended_at: "b", duration_ms: 498.7, status: "ok" },
+          { stage: "retrieve", started_at: "b", ended_at: "c", duration_ms: 29.4, status: "ok" },
+          { stage: "rerank", started_at: "c", ended_at: "d", duration_ms: 0.5, status: "ok" },
+        ]}
+      />,
+    );
+    const panel = within(container);
+    expect(panel.getAllByText("29.9 ms").length).toBeGreaterThan(0);
+    expect(panel.queryByText(/528.6 ms/)).not.toBeInTheDocument();
+    expect(panel.getByText(/under the 200ms target/)).toBeInTheDocument();
+  });
+
   it("falls back to metadata timings when the backend predates the evidence event", () => {
     const { container } = render(
       <LatencyDashboard

@@ -57,7 +57,15 @@ export function LatencyDashboard({
   }
 
   const max = Math.max(...rows.map((timing) => timing.duration_ms), 1);
-  const total = pipelineDuration ?? rows.reduce((sum, timing) => sum + timing.duration_ms, 0);
+  // Always sum the rows actually shown rather than trusting the server total.
+  // A backend that still counts a provider stage (speech recognition, say) in
+  // `pipeline_duration_ms` would otherwise print a headline number that the
+  // stages below it don't add up to. Once the backend excludes the same stages
+  // the two agree, and this stays correct either way. The server value is only
+  // a fallback for a payload that carries a total but no per-stage timings.
+  const total = rows.length
+    ? rows.reduce((sum, timing) => sum + timing.duration_ms, 0)
+    : (pipelineDuration ?? 0);
   const underTarget = total <= PIPELINE_TARGET_MS;
 
   return (
