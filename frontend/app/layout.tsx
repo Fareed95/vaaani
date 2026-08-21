@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vaaani — Ask across languages",
+  title: "Vaaani: Ask across languages",
   description: "A voice-first, evidence-grounded multilingual research assistant.",
 };
 

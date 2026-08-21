@@ -30,7 +30,7 @@ const STAGE_LABELS: Record<string, string> = {
   confidence_gate: "Checking retrieval confidence…",
   generate: "Writing a grounded answer…",
   groundedness_check: "Verifying the answer against evidence…",
-  refuse: "Answer withheld — evidence wasn't strong enough…",
+  refuse: "Answer withheld, evidence wasn't strong enough…",
   tts: "Synthesizing voice response…",
   response: "Finishing up…",
 };
@@ -188,15 +188,15 @@ export default function VaaaniPage() {
         </article>
         <article>
           <span>Chunking</span>
-          <strong>Fixed-size, semantic, and metadata-aware — compared, not just one strategy</strong>
+          <strong>Fixed-size, semantic, and metadata-aware: compared, not just one strategy</strong>
         </article>
         <article>
           <span>Retrieval latency</span>
-          <strong>P50 ~60ms, P70 ~73ms — under the 200ms target, measured on 50 real queries</strong>
+          <strong>P50 ~60ms, P70 ~73ms, under the 200ms target, measured on 50 real queries</strong>
         </article>
         <article>
           <span>Guardrails</span>
-          <strong>Off-topic gate, confidence threshold, groundedness check — refuses rather than guesses</strong>
+          <strong>Off-topic gate, confidence threshold, groundedness check: refuses rather than guesses</strong>
         </article>
       </section>
 

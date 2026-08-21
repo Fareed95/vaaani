@@ -77,7 +77,7 @@ export function LatencyDashboard({
       <div className={`retrieval-target ${underTarget ? "is-under" : "is-over"}`}>
         {underTarget ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
         <span>
-          Full pipeline: <b>{total.toFixed(1)} ms</b> {underTarget ? "— under the 200ms target" : "— over the 200ms target"}
+          Full pipeline: <b>{total.toFixed(1)} ms</b> {underTarget ? "(under the 200ms target)" : "(over the 200ms target)"}
         </span>
       </div>
       <div className="timing-list">
