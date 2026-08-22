@@ -97,6 +97,14 @@
   letter-spacing: 0;
 }
 
+.heroTag {
+  display: block;
+  margin: -8px 0 20px;
+  color: var(--ink-soft);
+  font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+}
+
 .heroAction,
 .primaryAction {
   display: inline-flex;
@@ -227,6 +235,7 @@
 
 .languageSection p,
 .evidenceSection p,
+.instaSection p,
 .finalCta p {
   margin: 0 0 14px;
   color: var(--gold);
@@ -237,6 +246,7 @@
 
 .languageSection h2,
 .evidenceSection h2,
+.instaSection h2,
 .finalCta h2 {
   margin: 0;
   color: var(--ink);
@@ -350,6 +360,32 @@
   white-space: nowrap;
 }
 
+.instaSection {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(360px, 1fr);
+  gap: clamp(22px, 5vw, 62px);
+  align-items: start;
+  width: min(1120px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: clamp(26px, 5vw, 56px) 0 clamp(34px, 6vw, 72px);
+  border-top: 1px solid var(--line);
+}
+
+.instaSection > div:first-child > span {
+  display: block;
+  max-width: 480px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.instaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
 .finalCta {
   display: grid;
   justify-items: center;
@@ -429,6 +465,7 @@
   .languageSection,
   .flowSection,
   .evidenceSection,
+  .instaSection,
   .finalCta {
     width: min(100% - 28px, 1120px);
   }
@@ -449,7 +486,12 @@
 
 @media (max-width: 920px) {
   .languageSection,
-  .evidenceSection {
+  .evidenceSection,
+  .instaSection {
+    grid-template-columns: 1fr;
+  }
+
+  .instaGrid {
     grid-template-columns: 1fr;
   }
 

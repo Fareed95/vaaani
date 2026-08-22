@@ -6,6 +6,7 @@ import gsap from "gsap";
 import { ArrowRight, BookOpenText, Github, Languages, Mic2, RotateCcw, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { InstagramEmbeds } from "./InstagramEmbeds";
 import styles from "./VaaaniLanding.module.css";
 
 type LayerDef = {
@@ -158,6 +159,7 @@ export function VaaaniLanding() {
         <div ref={ctaRef} className={styles.heroDock}>
           <p>Vaaani</p>
           <h1>Voice answers with proof attached.</h1>
+          <span className={styles.heroTag}>Built at Hacker House Goa 2026 &middot; #RAGInGoa</span>
           <Link href="/vaaani" className={styles.heroAction}>
             Launch Vaaani <ArrowRight size={19} />
           </Link>
@@ -235,6 +237,15 @@ export function VaaaniLanding() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className={styles.instaSection} aria-labelledby="landing-insta-title">
+        <div>
+          <p>Built in public</p>
+          <h2 id="landing-insta-title">Follow the build from Hacker House Goa 2026.</h2>
+          <span>The 72-hour process and the live demo, posted for #RAGInGoa.</span>
+        </div>
+        <InstagramEmbeds className={styles.instaGrid} />
       </section>
 
       <section className={styles.finalCta} aria-labelledby="landing-final-title">
